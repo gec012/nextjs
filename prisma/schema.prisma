@@ -1,0 +1,270 @@
+// Configuración para Vercel Postgres
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ============================================
+// DATASOURCE (Para la generación de Prisma Client)
+// La URL para Migrate se define en prisma.config.ts
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  ADMIN
+  RECEPCIONISTA
+  CLIENTE
+}
+
+enum MembershipStatus {
+  ACTIVE
+  EXPIRED
+  PENDING
+}
+
+enum ReservationStatus {
+  ACTIVE
+  ATTENDED
+  CANCELLED
+  NO_SHOW
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PaymentMethod {
+  TRANSFER
+  CASH
+  CARD
+  MERCADOPAGO
+}
+
+// ============================================
+// MODELOS PRINCIPALES
+// ============================================
+
+model User {
+  id              Int       @id @default(autoincrement())
+  name            String
+  email           String    @unique
+  password        String
+  rol             UserRole  @default(CLIENTE)
+  phone           String?
+  profilePhoto    String?
+  pushToken       String?   // Para notificaciones
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relaciones
+  memberships     Membership[]
+  reservations    Reservation[]
+  attendances     Attendance[]
+  payments        Payment[]
+  accessLogs      AccessLog[]
+
+  @@index([email])
+  @@index([rol])
+}
+
+model Discipline {
+  id                Int       @id @default(autoincrement())
+  name              String    @unique
+  description       String?
+  requiresReservation Boolean @default(false)
+  color             String?   // Color para UI
+  icon              String?   // Icono para UI
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relaciones
+  classes           Class[]
+  memberships       Membership[]
+  attendances       Attendance[]
+  plans             Plan[]
+
+  @@index([name])
+}
+
+model Plan {
+  id              Int       @id @default(autoincrement())
+  name            String
+  description     String?
+  price           Float
+  credits         Int       // 0 = ilimitado
+  isUnlimited     Boolean   @default(false)
+  durationDays    Int       @default(30)
+  disciplineId    Int
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relaciones
+  discipline      Discipline @relation(fields: [disciplineId], references: [id])
+  memberships     Membership[]
+  payments        Payment[]
+
+  @@index([disciplineId])
+  @@index([isActive])
+}
+
+model Membership {
+  id                Int               @id @default(autoincrement())
+  userId            Int
+  planId            Int
+  disciplineId      Int
+  totalCredits      Int
+  remainingCredits  Int
+  isUnlimited       Boolean           @default(false)
+  startDate         DateTime          @default(now())
+  expirationDate    DateTime
+  status            MembershipStatus  @default(ACTIVE)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Relaciones
+  user              User       @relation(fields: [userId], references: [id])
+  plan              Plan       @relation(fields: [planId], references: [id])
+  discipline        Discipline @relation(fields: [disciplineId], references: [id])
+  reservations      Reservation[]
+  attendances       Attendance[]
+
+  @@index([userId])
+  @@index([disciplineId])
+  @@index([status])
+  @@index([expirationDate])
+}
+
+model Class {
+  id              Int       @id @default(autoincrement())
+  name            String
+  disciplineId    Int
+  instructorName  String?
+  startTime       DateTime
+  endTime         DateTime
+  capacity        Int
+  description     String?
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relaciones
+  discipline      Discipline @relation(fields: [disciplineId], references: [id])
+  reservations    Reservation[]
+
+  @@index([disciplineId])
+  @@index([startTime])
+}
+
+model Reservation {
+  id              Int               @id @default(autoincrement())
+  userId          Int
+  classId         Int
+  membershipId    Int
+  status          ReservationStatus @default(ACTIVE)
+  attended        Boolean           @default(false)
+  cancelledAt     DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relaciones
+  user            User       @relation(fields: [userId], references: [id])
+  class           Class      @relation(fields: [classId], references: [id])
+  membership      Membership @relation(fields: [membershipId], references: [id])
+
+  @@unique([userId, classId])
+  @@index([userId])
+  @@index([classId])
+  @@index([status])
+}
+
+model Attendance {
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  disciplineId    Int
+  membershipId    Int?
+  type            String    // "reservation" | "direct_access"
+  checkInTime     DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+
+  // Relaciones
+  user            User       @relation(fields: [userId], references: [id])
+  discipline      Discipline @relation(fields: [disciplineId], references: [id])
+  membership      Membership? @relation(fields: [membershipId], references: [id])
+
+  @@index([userId])
+  @@index([disciplineId])
+  @@index([checkInTime])
+}
+
+model Payment {
+  id              Int           @id @default(autoincrement())
+  userId          Int
+  planId          Int
+  amount          Float
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  proofPhoto      String?
+  approvedBy      Int?
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relaciones
+  user            User     @relation(fields: [userId], references: [id])
+  plan            Plan     @relation(fields: [planId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model AccessLog {
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  accessType      String    // "qr_dynamic" | "qr_static" | "manual"
+  granted         Boolean
+  reason          String?
+  disciplineName  String?
+  timestamp       DateTime  @default(now())
+
+  // Relaciones
+  user            User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([timestamp])
+}
+
+model BankInfo {
+  id              Int       @id @default(autoincrement())
+  cbu             String
+  alias           String
+  cuit            String
+  bankName        String
+  accountHolder   String
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model SystemConfig {
+  id              Int       @id @default(autoincrement())
+  key             String    @unique
+  value           String
+  description     String?
+  updatedAt       DateTime  @updatedAt
+
+  @@index([key])
+}
