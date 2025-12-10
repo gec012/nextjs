@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuthStore, useUser } from '@/lib/stores/auth.store';
+import { useUser } from '@/lib/stores/auth.store';
 import { useMembershipStore } from '@/lib/stores/membership.store';
 import Navbar from '@/components/Navbar';
 import {
@@ -16,7 +16,6 @@ import toast from 'react-hot-toast';
 
 export default function ClientDashboard() {
     const user = useUser();
-    const token = useAuthStore((state) => state.token);
     const memberships = useMembershipStore((state) => state.memberships);
     const setMemberships = useMembershipStore((state) => state.setMemberships);
     const setLoading = useMembershipStore((state) => state.setLoading);
@@ -30,9 +29,7 @@ export default function ClientDashboard() {
         try {
             setLoading(true);
             const response = await fetch('/api/my-memberships', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
+                credentials: 'include', // Cookie se envía automáticamente
             });
 
             if (!response.ok) {

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/auth';
+import { authenticateRequest, AUTH_COOKIE_NAME } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
     try {
         const authHeader = request.headers.get('authorization');
-        const user = await authenticateRequest(authHeader);
+        const user = await authenticateRequest(authHeader, request);
 
         if (!user) {
             return NextResponse.json(
@@ -13,13 +13,21 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // En un sistema JWT stateless, el logout se maneja en el cliente
-        // Aquí podríamos invalidar el token en una blacklist si fuera necesario
-        // Por ahora solo confirmamos el logout
-
-        return NextResponse.json({
+        // Crear respuesta de logout exitoso
+        const response = NextResponse.json({
             message: 'Logout exitoso',
         });
+
+        // Eliminar la cookie HttpOnly seteando maxAge a 0
+        response.cookies.set(AUTH_COOKIE_NAME, '', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 0, // Elimina la cookie inmediatamente
+            path: '/',
+        });
+
+        return response;
 
     } catch (error) {
         console.error('Logout error:', error);

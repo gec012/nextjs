@@ -5,10 +5,24 @@
 ### ✅ Backend Completo (API Routes de Next.js 16)
 
 #### **Autenticación & Usuarios**
-- ✅ `POST /api/login` - Login con validación de membresía
-- ✅ `POST /api/logout` - Cierre de sesión
+- ✅ `POST /api/login` - Login con validación de membresía (HttpOnly Cookies)
+- ✅ `POST /api/logout` - Cierre de sesión (limpia cookie)
 - ✅ `GET /api/me` - Perfil del usuario
 - ✅ `PUT /api/me/password` - Cambiar contraseña
+
+#### **Gestión de Usuarios (Admin)**
+- ✅ `GET /api/users` - Listar usuarios con búsqueda y paginación
+- ✅ `POST /api/users` - Crear nuevo usuario
+- ✅ `GET /api/users/[id]` - Obtener usuario específico
+- ✅ `PUT /api/users/[id]` - Actualizar usuario
+- ✅ `DELETE /api/users/[id]` - Eliminar usuario
+- ✅ `GET /api/users/[id]/history` - Historial completo (reservas, asistencias, pagos)
+
+#### **Disciplinas (Admin)**
+- ✅ `GET /api/disciplines` - Listar disciplinas
+- ✅ `POST /api/disciplines` - Crear disciplina
+- ✅ `PUT /api/disciplines/[id]` - Actualizar disciplina
+- ✅ `DELETE /api/disciplines/[id]` - Eliminar/desactivar disciplina
 
 #### **Membresías**
 - ✅ `GET /api/my-memberships` - Ver membresías del usuario
@@ -18,6 +32,8 @@
 
 #### **Clases & Reservas**
 - ✅ `GET /api/classes` - Listar clases disponibles
+- ✅ `GET /api/classes/[id]` - Obtener clase específica
+- ✅ `DELETE /api/classes/[id]` - Eliminar clase (admin)
 - ✅ `POST /api/classes/reserve` - Reservar clase
   - Descuenta crédito al reservar
   - Valida capacidad y horarios
@@ -36,17 +52,25 @@
 
 ### ✅ Frontend Premium
 
-#### **Páginas Creadas**
+#### **Páginas Implementadas**
 - ✅ `/` - **Login Page** con glassmorphism
 - ✅ `/dashboard/client` - **Dashboard del Cliente**
   - Vista de membresías activas
   - Estadísticas (membresías activas, créditos, vencimientos)
   - Cards con animaciones y hover effects
-  - Acciones rápidas (Reservar, QR, Historial)
+- ✅ `/dashboard/client/classes` - **Clases disponibles y reservas**
+- ✅ `/dashboard/client/qr` - **Generador de QR dinámico**
+- ✅ `/dashboard/client/history` - **Historial de reservas y asistencias**
+- ✅ `/dashboard/admin` - **Dashboard Admin** (estadísticas)
+- ✅ `/dashboard/admin/users` - **Gestión de Usuarios** (CRUD + historial)
+- ✅ `/dashboard/admin/disciplines` - **Gestión de Disciplinas** (CRUD)
+- ✅ `/dashboard/admin/classes` - **Gestión de Clases** (tabs: Programadas / Acceso Libre)
+- ✅ `/dashboard/admin/plans` - **Gestión de Planes** (placeholder)
+- ✅ `/dashboard/admin/settings` - **Configuración** (horarios, políticas, seguridad)
 
 #### **Componentes**
 - ✅ `<Navbar>` - Navegación responsiva por rol
-  - Admin: Dashboard, Usuarios, Clases, Planes, Config
+  - Admin: Dashboard, Usuarios, Disciplinas, Clases, Planes, Config
   - Staff: Escáner, Clases, Pagos
   - Cliente: Inicio, Clases, QR, Historial
 - ✅ Layout protegido con verificación de autenticación
@@ -57,7 +81,7 @@
 - ✅ **Prisma ORM** con schema completo
 - ✅ **Zod** para validación
 - ✅ **Zustand** para state management (NO Context)
-- ✅ **JWT** para autenticación
+- ✅ **JWT en HttpOnly Cookies** para autenticación segura
 - ✅ **QR dinámico** con expiración y hash de seguridad
 - ✅ **Seed script** con datos de prueba completos
 
@@ -70,6 +94,7 @@
 - ✅ Hover effects con elevación
 - ✅ Scrollbar personalizada
 - ✅ Responsive design completo
+- ✅ Layout de 2 columnas en desktop
 
 ---
 
@@ -119,14 +144,8 @@ npm run dev
 Abre **http://localhost:3000**
 
 **Login con:**
-- Email: `cliente@gym.com`
-- Password: `123456`
-
-Deberías ver el dashboard del cliente con:
-- 2 membresías activas (Musculación ilimitada + CrossFit 16 créditos)
-- Estadísticas
-- Tarjetas de membresías Premium
-- Botones de acción
+- Admin: `admin@gym.com` / `123456`
+- Cliente: `cliente@gym.com` / `123456`
 
 ---
 
@@ -135,10 +154,10 @@ Deberías ver el dashboard del cliente con:
 | Email | Password | Rol | Membresías |
 |-------|----------|-----|------------|
 | **admin@gym.com** | 123456 | ADMIN | Acceso total al sistema |
-| **recepcion@gym.com** | 123456 | RECEPCIONISTA | Escáner, pagos, clases |
-| **cliente@gym.com** | 123456 | CLIENTE | Musculación ∞ + CrossFit 16 |
-| ana@example.com | 123456 | CLIENTE | Musculación 12 + Yoga 8 |
-| carlos@example.com | 123456 | CLIENTE | Spinning 12 |
+| **recepcion@gym.com** | 123456 | STAFF | Escáner, pagos, clases |
+| **cliente@gym.com** | 123456 | CLIENT | Musculación ∞ + CrossFit 16 |
+| ana@example.com | 123456 | CLIENT | Musculación 12 + Yoga 8 |
+| carlos@example.com | 123456 | CLIENT | Spinning 12 |
 
 ---
 
@@ -158,68 +177,41 @@ Deberías ver el dashboard del cliente con:
 - Pack Spinning 12 - $22,000
 
 ### Clases (3)
-- CrossFit WOD - mañana 18:00 (Coach Mike)
-- Yoga Flow - mañana 18:00 (Laura)
-- Spinning Power - mañana 19:00 (Roberto)
+- CrossFit WOD - 18:00 (Coach Mike)
+- Yoga Flow - 18:00 (Laura)
+- Spinning Power - 19:00 (Roberto)
 
 ### Usuarios (5)
 - 1 Admin
-- 1 Recepcionista
+- 1 Staff
 - 3 Clientes con membresías activas
 
 ---
 
-## 🎯 PRÓXIMOS PASOS (Para Completar)
+## 🎯 ESTADO ACTUAL
 
-### 🔴 **Alta Prioridad**
-1. **Página de Clases** (`/dashboard/client/classes`)
-   - Listar clases disponibles
-   - Botón para reservar
-   - Ver mis reservas activas
+### ✅ COMPLETADO (80%)
+- Backend API funcional (18+ endpoints)
+- Autenticación con HttpOnly Cookies
+- Sistema de membresías
+- Reservas con políticas
+- Check-in inteligente
+- Login page premium
+- Dashboard cliente completo
+- Dashboard admin con:
+  - Gestión de usuarios (CRUD + historial)
+  - Gestión de disciplinas (CRUD)
+  - Gestión de clases (tabs: Programadas/Acceso Libre)
+  - Página de configuración
+- Componentes reutilizables
 
-2. **Generador de QR** (`/dashboard/client/qr`)
-   - Generar QR dinámico
-   - Mostrar tiempo de expiración
-   - Renovar QR
-
-3. **Historial** (`/dashboard/client/history`)
-   - Asistencias pasadas
-   - Reservas canceladas
-   - Estadísticas
-
-### 🟡 **Media Prioridad**
-4. **Dashboard Staff** (`/dashboard/staff`)
-   - Escáner QR con cámara
-   - Check-in manual
-   - Monitor en tiempo real
-
-5. **Dashboard Admin** (`/dashboard/admin`)
-   - Estadísticas globales
-   - Gestión de usuarios
-   - Gestión de planes
-   - Configuración del sistema
-
-6. **Endpoints Faltantes**
-   - `GET /api/my-reservations` - Reservas activas
-   - `GET /api/my-reservations/history` - Historial
-   - `GET /api/my-attendances` - Asistencias
-   - `GET /api/payments/bank-info` - Info bancaria
-   - `POST /api/payments/report-transfer` - Reportar pago
-   - `GET /api/staff/payments/pending` - Pagos pendientes
-   - `POST /api/staff/payments/[id]/approve` - Aprobar pago
-   - Rutas de Admin para CRUD de planes
-
-### 🟢 **Baja Prioridad**
-7. **Mejoras UI/UX**
-   - Dark/Light mode toggle
-   - Notificaciones push
-   - PWA (instalable)
-   - Skeleton loaders mejorados
-
-8. **Testing**
-   - Tests unitarios para endpoints
-   - Tests E2E con Playwright
-   - Tests de componentes
+### ⏳ POR HACER (20%)
+- Dashboard Staff (escáner QR)
+- Página de Planes (CRUD completo)
+- API para crear clases programadas desde el admin
+- Sistema de pagos completo
+- Notificaciones por email
+- Testing
 
 ---
 
@@ -252,21 +244,39 @@ npm run lint           # Linter
 ```
 nextjs/
 ├── app/
-│   ├── api/                    ✅ 9 endpoints implementados
+│   ├── api/                    ✅ 18+ endpoints implementados
 │   │   ├── login/
 │   │   ├── logout/
 │   │   ├── me/
 │   │   ├── my-memberships/
+│   │   ├── my-reservations/
+│   │   ├── my-attendances/
+│   │   ├── users/
+│   │   │   ├── [id]/
+│   │   │   │   └── history/
+│   │   ├── disciplines/
+│   │   │   └── [id]/
 │   │   ├── classes/
+│   │   │   ├── [id]/
 │   │   │   ├── reserve/
 │   │   │   └── cancel/[id]/
+│   │   ├── qr/generate/
 │   │   └── check-in/
-│   ├── dashboard/              ✅ Layouts y cliente
+│   ├── dashboard/              ✅ Completo
 │   │   ├── layout.tsx
 │   │   ├── client/
-│   │   │   └── page.tsx        ✅ Dashboard premium
-│   │   ├── staff/              ⏳ Por implementar
-│   │   └── admin/              ⏳ Por implementar
+│   │   │   ├── page.tsx
+│   │   │   ├── classes/
+│   │   │   ├── qr/
+│   │   │   └── history/
+│   │   ├── admin/
+│   │   │   ├── page.tsx
+│   │   │   ├── users/
+│   │   │   ├── disciplines/
+│   │   │   ├── classes/
+│   │   │   ├── plans/
+│   │   │   └── settings/
+│   │   └── staff/              ⏳ Por implementar
 │   ├── page.tsx                ✅ Login page
 │   ├── layout.tsx              ✅ Root layout
 │   └── globals.css             ✅ Sistema de diseño
@@ -274,10 +284,11 @@ nextjs/
 │   └── Navbar.tsx              ✅ Navegación por rol
 ├── lib/
 │   ├── prisma.ts               ✅ DB client
-│   ├── auth.ts                 ✅ JWT utils
+│   ├── auth.ts                 ✅ JWT utils + HttpOnly Cookies
 │   ├── qr.ts                   ✅ QR generation
 │   ├── utils.ts                ✅ Helpers
 │   ├── validations.ts          ✅ Zod schemas
+│   ├── route-protection.ts     ✅ Protección de rutas
 │   └── stores/                 ✅ Zustand stores
 │       ├── auth.store.ts
 │       └── membership.store.ts
@@ -288,6 +299,8 @@ nextjs/
 │   └── index.ts                ✅ TypeScript types
 ├── docker-compose.yml          ✅ PostgreSQL
 ├── package.json                ✅ Scripts configurados
+├── ARCHITECTURE.md             ✅ Documentación técnica
+├── COMPLETED.md                ✅ Este archivo
 ├── START_HERE.md               ✅ Guía de inicio
 ├── SETUP.md                    ✅ Setup detallado
 └── README.md                   ✅ Documentación
@@ -304,7 +317,7 @@ nextjs/
 - **ORM:** Prisma 7
 - **Validation:** Zod 4
 - **State:** Zustand 5
-- **Auth:** JWT (jsonwebtoken)
+- **Auth:** JWT (HttpOnly Cookies)
 - **QR:** qrcode + crypto
 - **UI:** Lucide React icons
 - **Notifications:** react-hot-toast
@@ -313,34 +326,7 @@ nextjs/
 
 ---
 
-## 🎯 ESTADO ACTUAL
-
-### ✅ COMPLETADO (60%)
-- Backend API funcional
-- Autenticación completa
-- Sistema de membresías
-- Reservas con políticas
-- Check-in inteligente
-- Login page premium
-- Dashboard cliente básico
-- Componentes reutilizables
-
-### ⏳ EN PROGRESO (0%)
-- Páginas de clases
-- Generador QR
-- Historial
-- Dashboards Staff/Admin
-
-### ❌ PENDIENTE (40%)
-- Endpoints faltantes
-- Sistema de pagos completo
-- CRUD de planes
-- Notificaciones
-- Testing
-
----
-
-## 🆘 TROUBLESHOOTING
+##  TROUBLESHOOTING
 
 **❌ Error: DATABASE_URL not found**
 ```bash
@@ -372,37 +358,18 @@ docker-compose up -d
 
 ---
 
-## 🚀 DEPLOY A PRODUCCIÓN (Vercel)
+## � ACTUALIZACIÓN: 10 de Diciembre 2024
 
-1. **Push a GitHub**
-```bash
-git init
-git add .
-git commit -m "Sistema de gimnasio completo"
-git branch -M main
-git remote add origin <tu-repo>
-git push -u origin main
-```
-
-2. **Crear proyecto en Vercel**
-   - Import from GitHub
-   - Add Vercel Postgres
-   - Variables de entorno se auto-configuran
-
-3. **Migrar DB**
-```bash
-vercel env pull .env.local
-npx prisma migrate deploy
-npx prisma db seed
-```
-
----
-
-## 📞 CONTACTO & SOPORTE
-
-- Ver `START_HERE.md` para guía rápida
-- Ver `SETUP.md` para setup detallado
-- Ver `README.md` para documentación completa
+### Cambios realizados hoy:
+1. ✅ Migración a autenticación con HttpOnly Cookies
+2. ✅ Arreglo del logout
+3. ✅ Página Gestionar Clases (tabs: Programadas / Acceso Libre)
+4. ✅ API para eliminar clases
+5. ✅ Página Gestionar Disciplinas (CRUD)
+6. ✅ Página Configuración (layout mejorado 2 columnas)
+7. ✅ Página Gestionar Usuarios (CRUD + historial)
+8. ✅ Historial de reservas, asistencias y pagos por usuario
+9. ✅ Mejoras de espaciado en Navbar desktop
 
 ---
 
@@ -413,6 +380,6 @@ Solo falta:
 2. `docker-compose up -d`
 3. `npm run db:generate && npm run db:push && npm run db:seed`
 4. `npm run dev`
-5. Login con `cliente@gym.com` / `123456`
+5. Login con `admin@gym.com` / `123456`
 
 **Y LISTO!** 🚀

@@ -10,6 +10,7 @@ interface MembershipState {
     setMemberships: (memberships: Membership[]) => void;
     updateMembership: (id: number, data: Partial<Membership>) => void;
     decrementCredits: (disciplineId: number) => void;
+    fetchMemberships: () => Promise<void>;
     setLoading: (loading: boolean) => void;
     setError: (error: string | null) => void;
     clear: () => void;
@@ -40,6 +41,38 @@ export const useMembershipStore = create<MembershipState>((set) => ({
                     : m
             ),
         }));
+    },
+
+    fetchMemberships: async () => {
+        set({ isLoading: true, error: null });
+        try {
+            const { useAuthStore } = await import('./auth.store');
+            const token = useAuthStore.getState().token;
+
+            if (!token) {
+                set({ isLoading: false, error: 'No hay token de autenticación' });
+                return;
+            }
+
+            const response = await fetch('/api/my-memberships', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al cargar membresías');
+            }
+
+            // Verificar si hay contenido antes de parsear JSON
+            const text = await response.text();
+            const data = text ? JSON.parse(text) : { memberships: [] };
+
+            set({ memberships: data.memberships || [], isLoading: false, error: null });
+        } catch (error) {
+            console.error('Error fetching memberships:', error);
+            set({ error: 'Error al cargar membresías', isLoading: false, memberships: [] });
+        }
     },
 
     setLoading: (loading: boolean) => {

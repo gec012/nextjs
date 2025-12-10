@@ -5,7 +5,7 @@ import { generateQRData } from '@/lib/qr';
 export async function POST(request: NextRequest) {
     try {
         const authHeader = request.headers.get('authorization');
-        const authUser = await authenticateRequest(authHeader);
+        const authUser = await authenticateRequest(authHeader, request);
 
         if (!authUser) {
             return NextResponse.json(

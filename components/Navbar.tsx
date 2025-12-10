@@ -13,7 +13,8 @@ import {
     Settings,
     Users,
     BarChart3,
-    ScanLine
+    ScanLine,
+    Activity,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -28,13 +29,9 @@ export default function Navbar({ activeTab = 'home' }: NavbarProps) {
 
     const handleLogout = async () => {
         try {
-            const token = useAuthStore.getState().token;
-
             await fetch('/api/logout', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
+                credentials: 'include', // Cookie se envía automáticamente
             });
 
             logout();
@@ -64,17 +61,18 @@ export default function Navbar({ activeTab = 'home' }: NavbarProps) {
                 return [
                     { icon: BarChart3, label: 'Dashboard', href: '/dashboard/admin' },
                     { icon: Users, label: 'Usuarios', href: '/dashboard/admin/users' },
+                    { icon: Activity, label: 'Disciplinas', href: '/dashboard/admin/disciplines' },
                     { icon: Calendar, label: 'Clases', href: '/dashboard/admin/classes' },
                     { icon: CreditCard, label: 'Planes', href: '/dashboard/admin/plans' },
                     { icon: Settings, label: 'Configuración', href: '/dashboard/admin/settings' },
                 ];
-            case 'RECEPCIONISTA':
+            case 'STAFF':
                 return [
                     { icon: ScanLine, label: 'Escáner', href: '/dashboard/staff' },
                     { icon: Calendar, label: 'Clases', href: '/dashboard/staff/classes' },
                     { icon: CreditCard, label: 'Pagos', href: '/dashboard/staff/payments' },
                 ];
-            case 'CLIENTE':
+            case 'CLIENT':
             default:
                 return [
                     { icon: User, label: 'Inicio', href: '/dashboard/client' },
@@ -98,12 +96,12 @@ export default function Navbar({ activeTab = 'home' }: NavbarProps) {
                         </div>
                         <div>
                             <h1 className="text-lg font-bold text-white">Mi Gimnasio</h1>
-                            <p className="text-xs text-gray-400">{user?.rol || 'CLIENTE'}</p>
+                            <p className="text-xs text-gray-400">{user?.rol || 'CLIENT'}</p>
                         </div>
                     </div>
 
                     {/* Navigation Links - Desktop */}
-                    <div className="hidden md:flex items-center gap-1">
+                    <div className="hidden md:flex items-center gap-2 lg:gap-4">
                         {navItems.map((item) => {
                             const Icon = item.icon;
                             const isActive = activeTab === item.label.toLowerCase();
@@ -112,13 +110,13 @@ export default function Navbar({ activeTab = 'home' }: NavbarProps) {
                                 <button
                                     key={item.label}
                                     onClick={() => router.push(item.href)}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${isActive
-                                            ? 'bg-blue-500/20 text-blue-400'
-                                            : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                    className={`flex items-center gap-2 px-3 lg:px-4 py-2 rounded-lg transition-all ${isActive
+                                        ? 'bg-blue-500/20 text-blue-400'
+                                        : 'text-gray-400 hover:text-white hover:bg-white/5'
                                         }`}
                                 >
                                     <Icon className="w-5 h-5" />
-                                    <span className="font-medium">{item.label}</span>
+                                    <span className="font-medium text-sm lg:text-base">{item.label}</span>
                                 </button>
                             );
                         })}
@@ -159,8 +157,8 @@ export default function Navbar({ activeTab = 'home' }: NavbarProps) {
                                 key={item.label}
                                 onClick={() => router.push(item.href)}
                                 className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${isActive
-                                        ? 'bg-blue-500/20 text-blue-400'
-                                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                    ? 'bg-blue-500/20 text-blue-400'
+                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
                                     }`}
                             >
                                 <Icon className="w-4 h-4" />

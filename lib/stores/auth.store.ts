@@ -1,17 +1,25 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { User, AuthUser } from '@/types';
+import { UserRole } from '@prisma/client';
+
+// Tipo de usuario simplificado para el store (sin datos sensibles)
+interface StoreUser {
+    id: number;
+    name: string;
+    email: string;
+    rol: UserRole;
+    profilePhoto?: string | null;
+}
 
 interface AuthState {
-    user: User | null;
-    token: string | null;
+    user: StoreUser | null;
     isAuthenticated: boolean;
     isLoading: boolean;
 
     // Actions
-    login: (authUser: AuthUser) => void;
+    login: (user: StoreUser) => void;
     logout: () => void;
-    updateUser: (user: Partial<User>) => void;
+    updateUser: (user: Partial<StoreUser>) => void;
     setLoading: (loading: boolean) => void;
 }
 
@@ -19,15 +27,12 @@ export const useAuthStore = create<AuthState>()(
     persist(
         (set) => ({
             user: null,
-            token: null,
             isAuthenticated: false,
             isLoading: true,
 
-            login: (authUser: AuthUser) => {
-                const { access_token, ...user } = authUser;
+            login: (user: StoreUser) => {
                 set({
                     user,
-                    token: access_token,
                     isAuthenticated: true,
                     isLoading: false,
                 });
@@ -36,13 +41,12 @@ export const useAuthStore = create<AuthState>()(
             logout: () => {
                 set({
                     user: null,
-                    token: null,
                     isAuthenticated: false,
                     isLoading: false,
                 });
             },
 
-            updateUser: (userData: Partial<User>) => {
+            updateUser: (userData: Partial<StoreUser>) => {
                 set((state) => ({
                     user: state.user ? { ...state.user, ...userData } : null,
                 }));
@@ -55,9 +59,9 @@ export const useAuthStore = create<AuthState>()(
         {
             name: 'gym-auth-storage',
             storage: createJSONStorage(() => localStorage),
+            // Solo guardar user e isAuthenticated (NO token - está en HttpOnly cookie)
             partialize: (state) => ({
                 user: state.user,
-                token: state.token,
                 isAuthenticated: state.isAuthenticated,
             }),
         }
@@ -66,10 +70,9 @@ export const useAuthStore = create<AuthState>()(
 
 // Selectores para mejor performance
 export const useUser = () => useAuthStore((state) => state.user);
-export const useToken = () => useAuthStore((state) => state.token);
 export const useIsAuthenticated = () => useAuthStore((state) => state.isAuthenticated);
 export const useIsAdmin = () => useAuthStore((state) => state.user?.rol === 'ADMIN');
 export const useIsStaff = () => useAuthStore((state) =>
-    state.user?.rol === 'ADMIN' || state.user?.rol === 'RECEPCIONISTA'
+    state.user?.rol === 'ADMIN' || state.user?.rol === 'STAFF'
 );
-export const useIsClient = () => useAuthStore((state) => state.user?.rol === 'CLIENTE');
+export const useIsClient = () => useAuthStore((state) => state.user?.rol === 'CLIENT');

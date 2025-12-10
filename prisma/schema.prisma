@@ -18,8 +18,8 @@ datasource db {
 
 enum UserRole {
   ADMIN
-  RECEPCIONISTA
-  CLIENTE
+  STAFF
+  CLIENT
 }
 
 enum MembershipStatus {
@@ -57,7 +57,7 @@ model User {
   name            String
   email           String    @unique
   password        String
-  rol             UserRole  @default(CLIENTE)
+  rol             UserRole  @default(CLIENT)
   phone           String?
   profilePhoto    String?
   pushToken       String?   // Para notificaciones

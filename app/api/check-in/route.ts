@@ -104,10 +104,14 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 1️⃣ Buscar reserva activa dentro de la ventana de tiempo (±30 min)
+        // 1️⃣ Buscar reserva activa dentro de la ventana de tiempo
+        // Ventana: 30 minutos ANTES hasta 20 minutos DESPUÉS del inicio de la clase
         const now = new Date();
-        const windowStart = new Date(now.getTime() - RESERVATION_WINDOW_MINUTES * 60 * 1000);
-        const windowEnd = new Date(now.getTime() + RESERVATION_WINDOW_MINUTES * 60 * 1000);
+        const MINUTES_BEFORE = 30; // Pueden marcar desde 30 min antes
+        const MINUTES_AFTER = 20;  // Hasta 20 min después del inicio (para los que llegan tarde del trabajo)
+
+        const windowStart = new Date(now.getTime() - MINUTES_BEFORE * 60 * 1000);
+        const windowEnd = new Date(now.getTime() + MINUTES_AFTER * 60 * 1000);
 
         const activeReservation = await prisma.reservation.findFirst({
             where: {

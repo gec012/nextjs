@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prisma';
-import { generateToken } from '@/lib/auth';
+import { generateToken, AUTH_COOKIE_NAME, COOKIE_OPTIONS } from '@/lib/auth';
 import { loginSchema } from '@/lib/validations';
 
 export async function POST(request: NextRequest) {
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Para clientes, verificar que tengan al menos una membresía activa
-        if (user.rol === 'CLIENTE' && user.memberships.length === 0) {
+        if (user.rol === 'CLIENT' && user.memberships.length === 0) {
             return NextResponse.json(
                 { message: 'Tu membresía ha vencido. Acercate al gimnasio para renovar.' },
                 { status: 403 }
@@ -69,22 +69,24 @@ export async function POST(request: NextRequest) {
             rol: user.rol,
         });
 
-        // Preparar respuesta (sin password)
-        const { password: _, ...userWithoutPassword } = user;
-
-        return NextResponse.json({
+        // Crear respuesta con cookie HttpOnly
+        const response = NextResponse.json({
             message: 'Login exitoso',
-            access_token: token,
             token_type: 'Bearer',
             user: {
-                id: userWithoutPassword.id,
-                name: userWithoutPassword.name,
-                email: userWithoutPassword.email,
-                rol: userWithoutPassword.rol,
-                phone: userWithoutPassword.phone,
-                profilePhoto: userWithoutPassword.profilePhoto,
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                rol: user.rol,
+                // No incluir phone por seguridad - se puede obtener con GET /api/me
+                profilePhoto: user.profilePhoto,
             },
         });
+
+        // Setear cookie HttpOnly (JavaScript NO puede acceder a esto)
+        response.cookies.set(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS);
+
+        return response;
 
     } catch (error: any) {
         // Error de validación de Zod

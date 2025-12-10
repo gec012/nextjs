@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/auth.store';
+import { getDashboardPathForRole } from '@/lib/route-protection';
 import { loginSchema } from '@/lib/validations';
 import toast from 'react-hot-toast';
 import { Dumbbell, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
@@ -22,7 +23,7 @@ export default function LoginPage() {
     // Validar con Zod
     const validation = loginSchema.safeParse({ email, password });
     if (!validation.success) {
-      const firstError = validation.error.errors[0];
+      const firstError = validation.error.issues[0];
       toast.error(firstError.message);
       return;
     }
@@ -35,6 +36,7 @@ export default function LoginPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Importante para recibir cookies
         body: JSON.stringify({ email, password }),
       });
 
@@ -45,25 +47,18 @@ export default function LoginPage() {
         return;
       }
 
-      // Guardar en store
-      login(data);
+      // Guardar solo datos del usuario en store (token está en HttpOnly cookie)
+      login(data.user);
 
       toast.success(`¡Bienvenido ${data.user.name}!`);
 
-      // Redirigir según rol
-      switch (data.user.rol) {
-        case 'ADMIN':
-          router.push('/dashboard/admin');
-          break;
-        case 'RECEPCIONISTA':
-          router.push('/dashboard/staff');
-          break;
-        case 'CLIENTE':
-          router.push('/dashboard/client');
-          break;
-        default:
-          router.push('/dashboard');
-      }
+      // Redirigir según rol usando función centralizada
+      const dashboardPath = getDashboardPathForRole(data.user.rol);
+
+      // Small delay to ensure state persistence completes
+      setTimeout(() => {
+        router.push(dashboardPath);
+      }, 50);
 
     } catch (error) {
       console.error('Login error:', error);

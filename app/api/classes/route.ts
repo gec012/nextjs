@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma';
 export async function GET(request: NextRequest) {
     try {
         const authHeader = request.headers.get('authorization');
-        const authUser = await authenticateRequest(authHeader);
+        const authUser = await authenticateRequest(authHeader, request);
 
         if (!authUser) {
             return NextResponse.json(
@@ -26,6 +26,12 @@ export async function GET(request: NextRequest) {
             },
             include: {
                 discipline: true,
+                reservations: {
+                    where: {
+                        userId: authUser.userId,
+                        status: 'ACTIVE',
+                    },
+                },
                 _count: {
                     select: {
                         reservations: {
@@ -46,6 +52,7 @@ export async function GET(request: NextRequest) {
         const formattedClasses = classes.map((c) => {
             const enrolled = c._count.reservations;
             const availableSpots = c.capacity - enrolled;
+            const userReservation = c.reservations[0]; // Solo puede haber una reserva activa por usuario
 
             return {
                 id: c.id,
@@ -59,6 +66,8 @@ export async function GET(request: NextRequest) {
                 enrolled,
                 availableSpots: availableSpots,
                 isFull: availableSpots <= 0,
+                isReserved: !!userReservation,
+                reservationId: userReservation?.id || null,
             };
         });
 

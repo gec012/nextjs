@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuthStore } from '@/lib/stores/auth.store';
 import Navbar from '@/components/Navbar';
 import { Calendar, CheckCircle, X, Clock, Dumbbell, TrendingUp } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -25,7 +24,6 @@ interface Attendance {
 }
 
 export default function HistoryPage() {
-    const token = useAuthStore((state) => state.token);
 
     const [reservations, setReservations] = useState<Reservation[]>([]);
     const [attendances, setAttendances] = useState<Attendance[]>([]);
@@ -39,11 +37,11 @@ export default function HistoryPage() {
     const fetchHistory = async () => {
         try {
             const resRes = await fetch('/api/my-reservations', {
-                headers: { 'Authorization': `Bearer ${token}` },
+                credentials: 'include',
             });
 
             const attRes = await fetch('/api/my-attendances', {
-                headers: { 'Authorization': `Bearer ${token}` },
+                credentials: 'include',
             });
 
             if (resRes.ok) {
@@ -69,7 +67,7 @@ export default function HistoryPage() {
         try {
             const response = await fetch(`/api/classes/cancel/${reservationId}`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` },
+                credentials: 'include',
             });
 
             const data = await response.json();

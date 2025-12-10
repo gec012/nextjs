@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuthStore, useUser } from '@/lib/stores/auth.store';
+import { useUser } from '@/lib/stores/auth.store';
 import Navbar from '@/components/Navbar';
 import { QrCode, RefreshCw, Clock, Shield, AlertCircle } from 'lucide-react';
 import QRCodeLib from 'qrcode';
@@ -9,7 +9,6 @@ import toast from 'react-hot-toast';
 
 export default function QRPage() {
     const user = useUser();
-    const token = useAuthStore((state) => state.token);
 
     const [qrCode, setQrCode] = useState<string>('');
     const [qrData, setQrData] = useState<any>(null);
@@ -43,8 +42,8 @@ export default function QRPage() {
         try {
             const response = await fetch('/api/qr/generate', {
                 method: 'POST',
+                credentials: 'include', // Cookie se envía automáticamente
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                 },
             });

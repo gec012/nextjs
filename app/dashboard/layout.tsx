@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore, useUser } from '@/lib/stores/auth.store';
+import { getRedirectPath } from '@/lib/route-protection';
 import { Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function DashboardLayout({
     children,
@@ -11,22 +13,49 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     const router = useRouter();
+    const pathname = usePathname();
     const user = useUser();
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-    const isLoading = useAuthStore((state) => state.isLoading);
-    const setLoading = useAuthStore((state) => state.setLoading);
+    const logout = useAuthStore((state) => state.logout);
+    const [isChecking, setIsChecking] = useState(true);
 
     useEffect(() => {
-        // Disable loading after mount
-        setLoading(false);
+        try {
+            // Redirect if not authenticated
+            if (!isAuthenticated) {
+                router.push('/');
+                return;
+            }
 
-        // Redirect if not authenticated
-        if (!isLoading && !isAuthenticated) {
+            // Check if user data is corrupted
+            if (!user || !user.rol) {
+                console.error('Corrupted auth state detected');
+                logout();
+                toast.error('Sesión inválida, por favor inicia sesión nuevamente');
+                router.push('/');
+                return;
+            }
+
+            // Check if user can access current route
+            const redirectPath = getRedirectPath(user.rol, pathname);
+            
+            if (redirectPath) {
+                // User cannot access this route, redirect to their dashboard
+                console.log(`Redirecting ${user.rol} from ${pathname} to ${redirectPath}`);
+                router.push(redirectPath);
+            } else {
+                // User can access this route, stop checking
+                setIsChecking(false);
+            }
+        } catch (error) {
+            console.error('Route protection error:', error);
+            logout();
             router.push('/');
         }
-    }, [isAuthenticated, isLoading, router, setLoading]);
+    }, [isAuthenticated, user, pathname, router, logout]);
 
-    if (isLoading) {
+    // Show loading while checking routes
+    if (isChecking || !user) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-900">
                 <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
@@ -34,7 +63,7 @@ export default function DashboardLayout({
         );
     }
 
-    if (!isAuthenticated || !user) {
+    if (!isAuthenticated) {
         return null;
     }
 

@@ -5,13 +5,13 @@ import { getHoursDifference } from '@/lib/utils';
 
 const CANCELLATION_HOURS = parseInt(process.env.CANCELLATION_HOURS || '3');
 
-export async function POST(
+async function handleCancelReservation(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    params: { id: string }
 ) {
     try {
         const authHeader = request.headers.get('authorization');
-        const authUser = await authenticateRequest(authHeader);
+        const authUser = await authenticateRequest(authHeader, request);
 
         if (!authUser) {
             return NextResponse.json(
@@ -115,4 +115,19 @@ export async function POST(
             { status: 500 }
         );
     }
+}
+
+// Exportar ambos métodos HTTP
+export async function POST(
+    request: NextRequest,
+    { params }: { params: { id: string } }
+) {
+    return handleCancelReservation(request, params);
+}
+
+export async function DELETE(
+    request: NextRequest,
+    { params }: { params: { id: string } }
+) {
+    return handleCancelReservation(request, params);
 }

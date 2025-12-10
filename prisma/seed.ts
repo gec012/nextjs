@@ -150,7 +150,7 @@ async function main() {
             name: 'María Recepcionista',
             email: 'recepcion@gym.com',
             password: hashedPassword,
-            rol: 'RECEPCIONISTA',
+            rol: 'STAFF',
             phone: '+54 9 11 2345-6789',
         },
     });
@@ -160,7 +160,7 @@ async function main() {
             name: 'Juan Cliente',
             email: 'cliente@gym.com',
             password: hashedPassword,
-            rol: 'CLIENTE',
+            rol: 'CLIENT',
             phone: '+54 9 11 3456-7890',
         },
     });
@@ -170,7 +170,7 @@ async function main() {
             name: 'Ana García',
             email: 'ana@example.com',
             password: hashedPassword,
-            rol: 'CLIENTE',
+            rol: 'CLIENT',
             phone: '+54 9 11 4567-8901',
         },
     });
@@ -180,7 +180,7 @@ async function main() {
             name: 'Carlos López',
             email: 'carlos@example.com',
             password: hashedPassword,
-            rol: 'CLIENTE',
+            rol: 'CLIENT',
             phone: '+54 9 11 5678-9012',
         },
     });
