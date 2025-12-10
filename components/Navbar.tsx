@@ -15,6 +15,8 @@ import {
     BarChart3,
     ScanLine,
     Activity,
+    Receipt,
+    TrendingUp,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -64,6 +66,8 @@ export default function Navbar({ activeTab = 'home' }: NavbarProps) {
                     { icon: Activity, label: 'Disciplinas', href: '/dashboard/admin/disciplines' },
                     { icon: Calendar, label: 'Clases', href: '/dashboard/admin/classes' },
                     { icon: CreditCard, label: 'Planes', href: '/dashboard/admin/plans' },
+                    { icon: Receipt, label: 'Membresías', href: '/dashboard/admin/memberships' },
+                    { icon: TrendingUp, label: 'Reportes', href: '/dashboard/admin/reports' },
                     { icon: Settings, label: 'Configuración', href: '/dashboard/admin/settings' },
                 ];
             case 'STAFF':
@@ -77,6 +81,7 @@ export default function Navbar({ activeTab = 'home' }: NavbarProps) {
                 return [
                     { icon: User, label: 'Inicio', href: '/dashboard/client' },
                     { icon: Calendar, label: 'Clases', href: '/dashboard/client/classes' },
+                    { icon: Receipt, label: 'Pagos', href: '/dashboard/client/payments' },
                     { icon: QrCode, label: 'Mi QR', href: '/dashboard/client/qr' },
                     { icon: History, label: 'Historial', href: '/dashboard/client/history' },
                 ];
@@ -86,7 +91,7 @@ export default function Navbar({ activeTab = 'home' }: NavbarProps) {
     const navItems = getNavItems();
 
     return (
-        <nav className="glass border-b border-white/10">
+        <nav className="sticky top-0 z-50 glass border-b border-white/10 backdrop-blur-md">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                     {/* Logo */}

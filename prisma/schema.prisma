@@ -42,9 +42,10 @@ enum PaymentStatus {
 }
 
 enum PaymentMethod {
-  TRANSFER
   CASH
-  CARD
+  TRANSFER
+  CREDIT
+  DEBIT
   MERCADOPAGO
 }
 

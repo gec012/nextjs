@@ -4,8 +4,9 @@ import prisma from '@/lib/prisma';
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params;
     try {
         const authHeader = request.headers.get('authorization');
         const authUser = await authenticateRequest(authHeader, request);
@@ -25,7 +26,7 @@ export async function DELETE(
             );
         }
 
-        const classId = parseInt(params.id);
+        const classId = parseInt(id);
 
         if (isNaN(classId)) {
             return NextResponse.json(
@@ -53,17 +54,19 @@ export async function DELETE(
 
         // Verificar si tiene reservas activas
         if (classItem.reservations.length > 0) {
-            return NextResponse.json(
-                {
-                    message: `No se puede eliminar. La clase tiene ${classItem.reservations.length} reservas activas.`,
-                    hasActiveReservations: true,
-                    reservationCount: classItem.reservations.length
+            // Cancelar automáticamente todas las reservas activas
+            await prisma.reservation.updateMany({
+                where: {
+                    classId: classId,
+                    status: 'ACTIVE'
                 },
-                { status: 400 }
-            );
+                data: {
+                    status: 'CANCELLED'
+                }
+            });
         }
 
-        // Eliminar la clase (las reservas canceladas se mantienen por historial)
+        // Eliminar la clase
         await prisma.class.delete({
             where: { id: classId }
         });
@@ -85,8 +88,9 @@ export async function DELETE(
 // También permitir GET para obtener detalles de una clase específica
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params;
     try {
         const authHeader = request.headers.get('authorization');
         const authUser = await authenticateRequest(authHeader, request);
@@ -98,7 +102,7 @@ export async function GET(
             );
         }
 
-        const classId = parseInt(params.id);
+        const classId = parseInt(id);
 
         if (isNaN(classId)) {
             return NextResponse.json(

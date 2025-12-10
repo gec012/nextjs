@@ -317,7 +317,310 @@ async function main() {
     console.log('✅ Clases creadas');
 
     // ============================================
-    // 6. CREAR INFORMACIÓN BANCARIA
+    // 6. CREAR PAGOS (para reportes)
+    // ============================================
+    const paymentMethods = ['CASH', 'TRANSFER', 'CREDIT', 'DEBIT', 'MERCADOPAGO'];
+    const today = new Date();
+
+    // Pagos del cliente 1
+    await prisma.payment.create({
+        data: {
+            userId: cliente1.id,
+            planId: planMusculacionIlimitado.id,
+            amount: 35000,
+            method: 'TRANSFER',
+            status: 'APPROVED',
+            createdAt: new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000), // Hace 2 días
+        },
+    });
+
+    await prisma.payment.create({
+        data: {
+            userId: cliente1.id,
+            planId: planCrossfit16.id,
+            amount: 32000,
+            method: 'MERCADOPAGO',
+            status: 'APPROVED',
+            createdAt: new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000), // Ayer
+        },
+    });
+
+    // Pagos del cliente 2
+    await prisma.payment.create({
+        data: {
+            userId: cliente2.id,
+            planId: planMusculacion12.id,
+            amount: 25000,
+            method: 'CASH',
+            status: 'APPROVED',
+            createdAt: new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000), // Hace 3 días
+        },
+    });
+
+    await prisma.payment.create({
+        data: {
+            userId: cliente2.id,
+            planId: planYoga8.id,
+            amount: 18000,
+            method: 'DEBIT',
+            status: 'APPROVED',
+            createdAt: today,
+        },
+    });
+
+    // Pagos del cliente 3
+    await prisma.payment.create({
+        data: {
+            userId: cliente3.id,
+            planId: planSpinning12.id,
+            amount: 22000,
+            method: 'CREDIT',
+            status: 'APPROVED',
+            createdAt: new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000), // Ayer
+        },
+    });
+
+    // Más clientes y pagos para estadísticas
+    const cliente4 = await prisma.user.create({
+        data: {
+            name: 'Laura Martínez',
+            email: 'laura@example.com',
+            password: hashedPassword,
+            rol: 'CLIENT',
+            phone: '+54 9 11 6789-0123',
+        },
+    });
+
+    await prisma.membership.create({
+        data: {
+            userId: cliente4.id,
+            planId: planMusculacion12.id,
+            disciplineId: musculacion.id,
+            totalCredits: 12,
+            remainingCredits: 12,
+            isUnlimited: false,
+            startDate: now,
+            expirationDate: in30Days,
+            status: 'ACTIVE',
+        },
+    });
+
+    await prisma.payment.create({
+        data: {
+            userId: cliente4.id,
+            planId: planMusculacion12.id,
+            amount: 25000,
+            method: 'TRANSFER',
+            status: 'APPROVED',
+            createdAt: today,
+        },
+    });
+
+    console.log('✅ Pagos creados');
+
+    // ============================================
+    // 7. CREAR ASISTENCIAS (para reportes)
+    // ============================================
+    // Asistencias de los últimos 7 días
+    for (let i = 0; i < 7; i++) {
+        const date = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
+
+        // Cliente 1 - Musculación (casi todos los días)
+        if (i !== 6) { // Descansa los domingos
+            await prisma.attendance.create({
+                data: {
+                    userId: cliente1.id,
+                    disciplineId: musculacion.id,
+                    type: 'direct_access',
+                    createdAt: date,
+                },
+            });
+        }
+
+        // Cliente 2 - Musculación (3 veces por semana)
+        if (i % 2 === 0) {
+            await prisma.attendance.create({
+                data: {
+                    userId: cliente2.id,
+                    disciplineId: musculacion.id,
+                    type: 'direct_access',
+                    createdAt: date,
+                },
+            });
+        }
+
+        // Cliente 3 y 4 - Spinning (2-3 veces por semana)
+        if (i < 3) {
+            await prisma.attendance.create({
+                data: {
+                    userId: cliente3.id,
+                    disciplineId: spinning.id,
+                    type: 'direct_access',
+                    createdAt: date,
+                },
+            });
+        }
+
+        if (i < 2) {
+            await prisma.attendance.create({
+                data: {
+                    userId: cliente4.id,
+                    disciplineId: musculacion.id,
+                    type: 'direct_access',
+                    createdAt: date,
+                },
+            });
+        }
+    }
+
+    console.log('✅ Asistencias creadas');
+
+    // ============================================
+    // 8. CREAR RESERVAS (para reportes)
+    // ============================================
+    const classCrossfit = await prisma.class.findFirst({
+        where: { name: 'CrossFit WOD' },
+    });
+
+    const classYoga = await prisma.class.findFirst({
+        where: { name: 'Yoga Flow' },
+    });
+
+    const classSpinning = await prisma.class.findFirst({
+        where: { name: 'Spinning Power' },
+    });
+
+    // Obtener membresías para las reservas
+    const membership1Crossfit = await prisma.membership.findFirst({
+        where: { userId: cliente1.id, disciplineId: crossfit.id },
+    });
+
+    const membership2Yoga = await prisma.membership.findFirst({
+        where: { userId: cliente2.id, disciplineId: yoga.id },
+    });
+
+    const membership3Spinning = await prisma.membership.findFirst({
+        where: { userId: cliente3.id, disciplineId: spinning.id },
+    });
+
+    const membership4Musculacion = await prisma.membership.findFirst({
+        where: { userId: cliente4.id, disciplineId: musculacion.id },
+    });
+
+    if (classCrossfit && membership1Crossfit) {
+        await prisma.reservation.create({
+            data: {
+                userId: cliente1.id,
+                classId: classCrossfit.id,
+                membershipId: membership1Crossfit.id,
+                status: 'ACTIVE',
+            },
+        });
+    }
+
+    if (classYoga && membership2Yoga) {
+        await prisma.reservation.create({
+            data: {
+                userId: cliente2.id,
+                classId: classYoga.id,
+                membershipId: membership2Yoga.id,
+                status: 'ACTIVE',
+            },
+        });
+    }
+
+    if (classSpinning && membership3Spinning) {
+        await prisma.reservation.create({
+            data: {
+                userId: cliente3.id,
+                classId: classSpinning.id,
+                membershipId: membership3Spinning.id,
+                status: 'ACTIVE',
+            },
+        });
+    }
+
+    // Cliente 4 no tiene membresía de Spinning, mejor crear una nueva
+    const membership4Spinning = await prisma.membership.create({
+        data: {
+            userId: cliente4.id,
+            planId: planSpinning12.id,
+            disciplineId: spinning.id,
+            totalCredits: 12,
+            remainingCredits: 11,
+            isUnlimited: false,
+            startDate: now,
+            expirationDate: in30Days,
+            status: 'ACTIVE',
+        },
+    });
+
+    if (classSpinning) {
+        await prisma.reservation.create({
+            data: {
+                userId: cliente4.id,
+                classId: classSpinning.id,
+                membershipId: membership4Spinning.id,
+                status: 'ACTIVE',
+            },
+        });
+    }
+
+    // Algunas reservas completadas (de la semana pasada)
+    const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const oldClass = await prisma.class.create({
+        data: {
+            name: 'CrossFit WOD - Semana Pasada',
+            disciplineId: crossfit.id,
+            instructorName: 'Coach Mike',
+            startTime: lastWeek,
+            endTime: new Date(lastWeek.getTime() + 60 * 60 * 1000),
+            capacity: 15,
+            isActive: false,
+        },
+    });
+
+    if (membership1Crossfit) {
+        await prisma.reservation.create({
+            data: {
+                userId: cliente1.id,
+                classId: oldClass.id,
+                membershipId: membership1Crossfit.id,
+                status: 'ATTENDED',
+                createdAt: new Date(lastWeek.getTime() - 24 * 60 * 60 * 1000),
+            },
+        });
+    }
+
+    // Cliente 2 necesita membresía de CrossFit para esta reserva pasada
+    const membership2Crossfit = await prisma.membership.create({
+        data: {
+            userId: cliente2.id,
+            planId: planCrossfit16.id,
+            disciplineId: crossfit.id,
+            totalCredits: 16,
+            remainingCredits: 15,
+            isUnlimited: false,
+            startDate: new Date(lastWeek.getTime() - 30 * 24 * 60 * 60 * 1000),
+            expirationDate: lastWeek,
+            status: 'EXPIRED',
+        },
+    });
+
+    await prisma.reservation.create({
+        data: {
+            userId: cliente2.id,
+            classId: oldClass.id,
+            membershipId: membership2Crossfit.id,
+            status: 'ATTENDED',
+            createdAt: new Date(lastWeek.getTime() - 24 * 60 * 60 * 1000),
+        },
+    });
+
+    console.log('✅ Reservas creadas');
+
+    // ============================================
+    // 9. CREAR INFORMACIÓN BANCARIA
     // ============================================
     await prisma.bankInfo.create({
         data: {
