@@ -25,9 +25,9 @@ export default function AdminLayout({
     }
 
     return (
-        <div className="flex min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900">
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900">
             <Sidebar />
-            <main className="flex-1 p-4 md:p-8 overflow-auto">
+            <main className="md:ml-64 p-4 md:p-8 min-h-screen">
                 {children}
             </main>
         </div>

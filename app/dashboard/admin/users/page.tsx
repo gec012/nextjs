@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import AdminLayout from '@/components/AdminLayout';
+
 import ReceiptModal from '@/components/ReceiptModal';
 import {
     Users,
@@ -369,7 +369,7 @@ export default function AdminUsersPage() {
     const adminCount = users.filter(u => u.rol === 'ADMIN').length;
 
     return (
-        <AdminLayout activeTab="usuarios">
+        <>
             <div className="flex items-center justify-between mb-8 animate-slide-in-up">
                 <div>
                     <h1 className="text-3xl font-bold text-white mb-2">
@@ -1066,6 +1066,6 @@ export default function AdminUsersPage() {
                     />
                 )
             }
-        </AdminLayout >
+        </>
     );
 }

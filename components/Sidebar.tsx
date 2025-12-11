@@ -179,9 +179,6 @@ export default function Sidebar({ activeTab }: SidebarProps) {
                     </button>
                 </div>
             </aside>
-
-            {/* Spacer para el contenido principal en desktop */}
-            <div className="hidden md:block w-64 flex-shrink-0" />
         </>
     );
 }

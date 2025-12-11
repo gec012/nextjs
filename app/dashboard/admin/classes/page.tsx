@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import BulkGeneratorModal from './bulk-generator-modal';
+import CalendarView from './calendar-view';
 import {
     Calendar,
     Clock,
@@ -15,6 +16,10 @@ import {
     Repeat,
     Building2,
     Zap,
+    LayoutGrid,
+    CalendarDays,
+    CheckSquare,
+    Square,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -67,6 +72,8 @@ export default function AdminClassesPage() {
     const [editingClass, setEditingClass] = useState<Class | null>(null);
     const [activeTab, setActiveTab] = useState<'classes' | 'areas'>('classes');
     const [showBulkGenerator, setShowBulkGenerator] = useState(false);
+    const [selectedClasses, setSelectedClasses] = useState<number[]>([]);
+    const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('calendar'); // Default to calendar view
 
     // Form state para clases programadas
     const [classFormData, setClassFormData] = useState({
@@ -158,14 +165,54 @@ export default function AdminClassesPage() {
         setModalType('class');
     };
 
-    const handleOpenAreaModal = () => {
-        setAreaFormData({
-            name: '',
-            disciplineId: '',
-            capacity: 50,
-            openTime: GYM_HOURS.openTime,
-            closeTime: GYM_HOURS.closeTime,
-        });
+    const handleOpenAreaModal = async (disciplineId?: number) => {
+        if (disciplineId) {
+            // Cargar configuración existente
+            try {
+                const response = await fetch(`/api/free-access-areas?disciplineId=${disciplineId}`, {
+                    credentials: 'include',
+                });
+                const data = await response.json();
+
+                if (response.ok && data.config) {
+                    setAreaFormData({
+                        name: '',
+                        disciplineId: data.config.disciplineId.toString(),
+                        capacity: data.config.capacity || 0,
+                        openTime: data.config.openTime,
+                        closeTime: data.config.closeTime,
+                    });
+                } else {
+                    // No hay configuración, usar defaults
+                    setAreaFormData({
+                        name: '',
+                        disciplineId: disciplineId.toString(),
+                        capacity: 0,
+                        openTime: GYM_HOURS.openTime,
+                        closeTime: GYM_HOURS.closeTime,
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading area config:', error);
+                // Si hay error, usar defaults
+                setAreaFormData({
+                    name: '',
+                    disciplineId: disciplineId.toString(),
+                    capacity: 0,
+                    openTime: GYM_HOURS.openTime,
+                    closeTime: GYM_HOURS.closeTime,
+                });
+            }
+        } else {
+            // Crear nueva área
+            setAreaFormData({
+                name: '',
+                disciplineId: '',
+                capacity: 0,
+                openTime: GYM_HOURS.openTime,
+                closeTime: GYM_HOURS.closeTime,
+            });
+        }
         setModalType('area');
     };
 
@@ -191,31 +238,86 @@ export default function AdminClassesPage() {
             return;
         }
 
-        // TODO: Implementar API para crear/editar clases
-        // Esto crearía una clase para cada día seleccionado
-        const selectedDayNames = classFormData.selectedDays
-            .map(d => DAYS_OF_WEEK.find(day => day.id === d)?.name)
-            .join(', ');
+        if (editingClass) {
+            // Editar clase existente
+            try {
+                const response = await fetch(`/api/classes/${editingClass.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        name: classFormData.name,
+                        disciplineId: parseInt(classFormData.disciplineId),
+                        instructorName: classFormData.instructorName || null,
+                        capacity: classFormData.capacity,
+                    }),
+                });
 
-        toast.success(
-            editingClass
-                ? 'Clase actualizada'
-                : `Clase creada para: ${selectedDayNames}`
-        );
-        handleCloseModal();
-        fetchClasses();
+                const data = await response.json();
+
+                if (!response.ok) {
+                    toast.error(data.message || 'Error al actualizar clase');
+                    return;
+                }
+
+                toast.success('Clase actualizada exitosamente');
+                handleCloseModal();
+                fetchClasses();
+            } catch (error) {
+                console.error('Error updating class:', error);
+                toast.error('Error al actualizar la clase');
+            }
+        } else {
+            // Crear nuevas clases (una por día seleccionado)
+            toast('Funcionalidad de crear clase no implementada. Usa el Generador Masivo');
+            handleCloseModal();
+        }
     };
 
     const handleSubmitArea = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // TODO: Implementar API para crear áreas de acceso libre
-        toast.success('Área de acceso libre configurada');
-        handleCloseModal();
+        if (!areaFormData.disciplineId) {
+            toast.error('Selecciona una disciplina');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/free-access-areas', {
+                method: 'POST', // Siempre POST, el backend usa upsert
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    disciplineId: parseInt(areaFormData.disciplineId),
+                    openTime: areaFormData.openTime,
+                    closeTime: areaFormData.closeTime,
+                    capacity: areaFormData.capacity || null,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                toast.error(data.message || 'Error al guardar configuración');
+                return;
+            }
+
+            toast.success('Configuración guardada exitosamente');
+            handleCloseModal();
+        } catch (error) {
+            console.error('Error saving free access area:', error);
+            toast.error('Error al guardar la configuración');
+        }
     };
 
     const handleDelete = async (classId: number) => {
         if (!confirm('¿Estás seguro de eliminar esta clase?')) return;
+
+        // Optimistic update: remove immediately from UI
+        const previousClasses = [...classes];
+        setClasses(classes.filter(c => c.id !== classId));
 
         try {
             const response = await fetch(`/api/classes/${classId}`, {
@@ -226,6 +328,9 @@ export default function AdminClassesPage() {
             const data = await response.json();
 
             if (!response.ok) {
+                // Rollback on error
+                setClasses(previousClasses);
+
                 if (data.hasActiveReservations) {
                     toast.error(`No se puede eliminar: ${data.reservationCount} reservas activas`);
                 } else {
@@ -235,10 +340,93 @@ export default function AdminClassesPage() {
             }
 
             toast.success('Clase eliminada exitosamente');
-            fetchClasses();
+            // Re-fetch to ensure data is in sync
+            await fetchClasses();
         } catch (error) {
+            // Rollback on error
+            setClasses(previousClasses);
             console.error('Error deleting class:', error);
             toast.error('Error al eliminar la clase');
+        }
+    };
+
+    const toggleSelectClass = (classId: number) => {
+        setSelectedClasses(prev =>
+            prev.includes(classId)
+                ? prev.filter(id => id !== classId)
+                : [...prev, classId]
+        );
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedClasses.length === classes.length) {
+            setSelectedClasses([]);
+        } else {
+            setSelectedClasses(classes.map(c => c.id));
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedClasses.length === 0) return;
+
+        if (!confirm(`¿Estás seguro de eliminar ${selectedClasses.length} clases?`)) return;
+
+        const previousClasses = [...classes];
+        setClasses(classes.filter(c => !selectedClasses.includes(c.id)));
+
+        try {
+            // Eliminar en lotes de 10 para evitar timeout
+            const batchSize = 10;
+            let deletedCount = 0;
+            let failedCount = 0;
+
+            for (let i = 0; i < selectedClasses.length; i += batchSize) {
+                const batch = selectedClasses.slice(i, i + batchSize);
+
+                const deletePromises = batch.map(id =>
+                    fetch(`/api/classes/${id}`, {
+                        method: 'DELETE',
+                        credentials: 'include',
+                    })
+                );
+
+                const results = await Promise.all(deletePromises);
+
+                // Log errores específicos
+                for (let j = 0; j < results.length; j++) {
+                    if (!results[j].ok) {
+                        const errorData = await results[j].json();
+                        console.error(`Error eliminando clase ${batch[j]}:`, results[j].status, errorData);
+                    }
+                }
+
+                const batchFailed = results.filter(r => !r.ok).length;
+
+                deletedCount += (results.length - batchFailed);
+                failedCount += batchFailed;
+
+                // Mostrar progreso
+                toast.loading(`Eliminando... ${deletedCount}/${selectedClasses.length}`, {
+                    id: 'bulk-delete-progress'
+                });
+            }
+
+            toast.dismiss('bulk-delete-progress');
+
+            if (failedCount > 0) {
+                setClasses(previousClasses);
+                toast.error(`Error al eliminar ${failedCount} de ${selectedClasses.length} clases`);
+                return;
+            }
+
+            toast.success(`${deletedCount} clases eliminadas exitosamente`);
+            setSelectedClasses([]);
+            await fetchClasses();
+        } catch (error) {
+            toast.dismiss('bulk-delete-progress');
+            setClasses(previousClasses);
+            console.error('Error deleting classes:', error);
+            toast.error('Error al eliminar las clases');
         }
     };
 
@@ -260,7 +448,67 @@ export default function AdminClassesPage() {
                         Administra las clases y áreas del gimnasio
                     </p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-3 items-center">
+                    {/* Bulk Selection Controls */}
+                    {activeTab === 'classes' && classes.length > 0 && (
+                        <>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={toggleSelectAll}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-lg glass text-gray-300 hover:text-white transition-all"
+                                    title={selectedClasses.length === classes.length ? "Deseleccionar todo" : "Seleccionar todo"}
+                                >
+                                    {selectedClasses.length === classes.length ? (
+                                        <CheckSquare className="w-4 h-4 text-orange-400" />
+                                    ) : (
+                                        <Square className="w-4 h-4" />
+                                    )}
+                                    <span className="text-sm hidden md:inline">
+                                        {selectedClasses.length === classes.length ? 'Deseleccionar' : 'Seleccionar'} todo
+                                    </span>
+                                </button>
+
+                                {selectedClasses.length > 0 && (
+                                    <button
+                                        onClick={handleBulkDelete}
+                                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                        <span className="text-sm font-semibold">
+                                            Eliminar ({selectedClasses.length})
+                                        </span>
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="h-8 w-px bg-white/10"></div>
+                        </>
+                    )}
+
+                    {activeTab === 'classes' && (
+                        <div className="flex gap-2 glass rounded-lg p-1">
+                            <button
+                                onClick={() => setViewMode('calendar')}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-lg font-semibold transition-all ${viewMode === 'calendar'
+                                    ? 'bg-orange-500 text-white'
+                                    : 'text-gray-400 hover:text-white'
+                                    }`}
+                                title="Vista calendario"
+                            >
+                                <CalendarDays className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={() => setViewMode('grid')}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-lg font-semibold transition-all ${viewMode === 'grid'
+                                    ? 'bg-orange-500 text-white'
+                                    : 'text-gray-400 hover:text-white'
+                                    }`}
+                                title="Vista tarjetas"
+                            >
+                                <LayoutGrid className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
                     <button
                         onClick={() => setShowBulkGenerator(true)}
                         className="flex items-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-semibold hover:opacity-90 transition-all"
@@ -269,7 +517,7 @@ export default function AdminClassesPage() {
                         <span className="hidden md:inline">Generador Masivo</span>
                     </button>
                     <button
-                        onClick={handleOpenAreaModal}
+                        onClick={() => handleOpenAreaModal()}
                         className="flex items-center gap-2 px-4 py-3 rounded-lg bg-orange-500/20 text-orange-400 font-semibold hover:bg-orange-500/30 transition-all"
                     >
                         <Building2 className="w-5 h-5" />
@@ -373,6 +621,14 @@ export default function AdminClassesPage() {
                                 Crear primera clase
                             </button>
                         </div>
+                    ) : viewMode === 'calendar' ? (
+                        <CalendarView
+                            classes={classes}
+                            selectedClasses={selectedClasses}
+                            onEdit={handleOpenClassModal}
+                            onDelete={handleDelete}
+                            onToggleSelect={toggleSelectClass}
+                        />
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {classes.map((classItem, index) => (
@@ -475,7 +731,7 @@ export default function AdminClassesPage() {
                                         </div>
                                     </div>
                                     <button
-                                        onClick={handleOpenAreaModal}
+                                        onClick={() => handleOpenAreaModal(discipline.id)}
                                         className="p-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all"
                                     >
                                         <Pencil className="w-4 h-4" />
@@ -511,7 +767,7 @@ export default function AdminClassesPage() {
 
                         {/* Add New Area Card */}
                         <button
-                            onClick={handleOpenAreaModal}
+                            onClick={() => handleOpenAreaModal()}
                             className="glass rounded-xl p-6 border-2 border-dashed border-white/20 hover:border-orange-400/50 transition-all flex flex-col items-center justify-center gap-4 min-h-[200px]"
                         >
                             <div className="w-12 h-12 rounded-lg bg-orange-500/20 flex items-center justify-center">
@@ -756,8 +1012,11 @@ export default function AdminClassesPage() {
                                     </label>
                                     <input
                                         type="number"
-                                        value={areaFormData.capacity}
-                                        onChange={(e) => setAreaFormData({ ...areaFormData, capacity: parseInt(e.target.value) })}
+                                        value={areaFormData.capacity || ''}
+                                        onChange={(e) => setAreaFormData({
+                                            ...areaFormData,
+                                            capacity: e.target.value ? parseInt(e.target.value) : 0
+                                        })}
                                         className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         min="1"
                                         max="500"

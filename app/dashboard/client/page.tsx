@@ -47,8 +47,14 @@ export default function ClientDashboard() {
     };
 
     const activeMemberships = memberships.filter((m) => m.status === 'ACTIVE');
-    const totalCredits = activeMemberships.reduce(
-        (sum, m) => sum + (m.is_unlimited ? 999 : m.remaining_credits),
+
+    // Separar membresías limitadas e ilimitadas
+    const limitedMemberships = activeMemberships.filter((m) => !m.is_unlimited);
+    const unlimitedCount = activeMemberships.filter((m) => m.is_unlimited).length;
+
+    // Sumar solo créditos de membresías limitadas
+    const totalLimitedCredits = limitedMemberships.reduce(
+        (sum, m) => sum + m.remaining_credits,
         0
     );
 
@@ -98,18 +104,39 @@ export default function ClientDashboard() {
                     <p className="text-gray-400 text-sm">Membresías activas</p>
                 </div>
 
-                {/* Total Credits */}
+                {/* Memberships Breakdown */}
                 <div className="glass rounded-xl p-6 card-hover animate-slide-in-up" style={{ animationDelay: '100ms' }}>
                     <div className="flex items-center justify-between mb-4">
                         <div className="w-12 h-12 rounded-lg gradient-secondary flex items-center justify-center">
                             <CreditCard className="w-6 h-6 text-white" />
                         </div>
-                        <span className="text-blue-400 text-sm font-medium">Créditos</span>
+                        <span className="text-blue-400 text-sm font-medium">Tipo</span>
                     </div>
-                    <p className="text-3xl font-bold text-white mb-1">
-                        {totalCredits > 900 ? '∞' : totalCredits}
-                    </p>
-                    <p className="text-gray-400 text-sm">Créditos disponibles</p>
+                    <div className="flex items-center gap-2 mb-1">
+                        {limitedMemberships.length > 0 && (
+                            <>
+                                <span className="text-3xl font-bold text-white">
+                                    {limitedMemberships.length}
+                                </span>
+                                <span className="text-lg text-gray-400">limitada{limitedMemberships.length > 1 ? 's' : ''}</span>
+                            </>
+                        )}
+                        {limitedMemberships.length > 0 && unlimitedCount > 0 && (
+                            <span className="text-gray-500 mx-1">|</span>
+                        )}
+                        {unlimitedCount > 0 && (
+                            <>
+                                <span className="text-3xl font-bold text-green-400">
+                                    {unlimitedCount}
+                                </span>
+                                <span className="text-lg text-gray-400">ilimitada{unlimitedCount > 1 ? 's' : ''}</span>
+                            </>
+                        )}
+                        {activeMemberships.length === 0 && (
+                            <span className="text-3xl font-bold text-gray-500">-</span>
+                        )}
+                    </div>
+                    <p className="text-gray-400 text-sm">Distribución de membresías</p>
                 </div>
 
                 {/* Next Expiration */}
@@ -120,12 +147,23 @@ export default function ClientDashboard() {
                         </div>
                         <span className="text-orange-400 text-sm font-medium">Próximo vencimiento</span>
                     </div>
-                    <p className="text-3xl font-bold text-white mb-1">
-                        {activeMemberships.length > 0
-                            ? Math.min(...activeMemberships.map((m) => m.days_remaining))
-                            : '-'}
-                    </p>
-                    <p className="text-gray-400 text-sm">Días restantes</p>
+                    {activeMemberships.length > 0 ? (
+                        <>
+                            <p className="text-3xl font-bold text-white mb-1">
+                                {Math.min(...activeMemberships.map((m) => m.days_remaining))}
+                            </p>
+                            <p className="text-gray-400 text-sm">
+                                Días - {activeMemberships.find(m =>
+                                    m.days_remaining === Math.min(...activeMemberships.map(x => x.days_remaining))
+                                )?.discipline || 'N/A'}
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <p className="text-3xl font-bold text-gray-500 mb-1">-</p>
+                            <p className="text-gray-400 text-sm">Sin membresías</p>
+                        </>
+                    )}
                 </div>
             </div>
 

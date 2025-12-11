@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useMembershipStore } from '@/lib/stores/membership.store';
+import ClientCalendarView from './client-calendar-view';
 import {
     Calendar,
     Clock,
@@ -11,6 +12,8 @@ import {
     CheckCircle,
     X,
     Loader2,
+    LayoutGrid,
+    CalendarDays,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -39,6 +42,9 @@ export default function ClassesPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isReserving, setIsReserving] = useState(false);
     const [isCancelling, setIsCancelling] = useState(false);
+    const [viewMode, setViewMode] = useState<'grid' | 'calendar'>(
+        typeof window !== 'undefined' && window.innerWidth >= 768 ? 'calendar' : 'grid'
+    );
 
     useEffect(() => {
         fetchClasses();
@@ -176,6 +182,34 @@ export default function ClassesPage() {
                 ))}
             </div>
 
+            {/* View Toggle */}
+            <div className="mb-6 flex justify-end">
+                <div className="flex gap-2 glass rounded-lg p-1">
+                    <button
+                        onClick={() => setViewMode('calendar')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all ${viewMode === 'calendar'
+                            ? 'bg-blue-500 text-white'
+                            : 'text-gray-400 hover:text-white'
+                            }`}
+                        title="Vista calendario"
+                    >
+                        <CalendarDays className="w-4 h-4" />
+                        <span className="hidden sm:inline">Calendario</span>
+                    </button>
+                    <button
+                        onClick={() => setViewMode('grid')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all ${viewMode === 'grid'
+                            ? 'bg-blue-500 text-white'
+                            : 'text-gray-400 hover:text-white'
+                            }`}
+                        title="Vista tarjetas"
+                    >
+                        <LayoutGrid className="w-4 h-4" />
+                        <span className="hidden sm:inline">Tarjetas</span>
+                    </button>
+                </div>
+            </div>
+
             {isLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[1, 2, 3].map((i) => (
@@ -196,16 +230,29 @@ export default function ClassesPage() {
                             : 'Vuelve más tarde para ver nuevas clases'}
                     </p>
                 </div>
+            ) : viewMode === 'calendar' ? (
+                <ClientCalendarView
+                    classes={filteredClasses.map(c => ({
+                        ...c,
+                        isFull: c.availableSpots === 0,
+                        enrolled: 0 // Not used in calendar view
+                    }))}
+                    onReserve={(classItem) => setSelectedClass({
+                        ...classItem,
+                        reservationId: classItem.reservationId ?? null
+                    })}
+                />
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredClasses.map((classItem, index) => {
                         const hasAccess = canReserve(classItem.disciplineName);
                         const isFull = classItem.availableSpots === 0;
+                        const isPast = parseISO(classItem.startTime) < new Date();
 
                         return (
                             <div
                                 key={classItem.id}
-                                className="glass rounded-xl p-6 card-hover animate-slide-in-up"
+                                className={`glass rounded-xl p-6 card-hover animate-slide-in-up ${isPast ? 'opacity-50' : ''}`}
                                 style={{ animationDelay: `${index * 50}ms` }}
                             >
                                 <div className="flex items-start justify-between mb-4">
@@ -222,6 +269,11 @@ export default function ClassesPage() {
                                             </p>
                                         </div>
                                     </div>
+                                    {isPast && (
+                                        <span className="px-2 py-1 rounded bg-gray-500/20 text-gray-400 text-xs font-bold">
+                                            Pasada
+                                        </span>
+                                    )}
                                 </div>
 
                                 <div className="space-y-3 mb-4">
@@ -251,15 +303,17 @@ export default function ClassesPage() {
                                 ) : (
                                     <button
                                         onClick={() => setSelectedClass(classItem)}
-                                        disabled={!hasAccess || isFull}
-                                        className={`w-full py-3 rounded-lg font-semibold transition-all ${!hasAccess
+                                        disabled={!hasAccess || isFull || isPast}
+                                        className={`w-full py-3 rounded-lg font-semibold transition-all ${isPast
                                             ? 'bg-gray-500/20 text-gray-500 cursor-not-allowed'
-                                            : isFull
-                                                ? 'bg-red-500/20 text-red-400 cursor-not-allowed'
-                                                : 'gradient-primary text-white hover:opacity-90'
+                                            : !hasAccess
+                                                ? 'bg-gray-500/20 text-gray-500 cursor-not-allowed'
+                                                : isFull
+                                                    ? 'bg-red-500/20 text-red-400 cursor-not-allowed'
+                                                    : 'gradient-primary text-white hover:opacity-90'
                                             }`}
                                     >
-                                        {!hasAccess ? 'Sin membresía' : isFull ? 'Completo' : 'Reservar'}
+                                        {isPast ? 'Clase pasada' : !hasAccess ? 'Sin membresía' : isFull ? 'Completo' : 'Reservar'}
                                     </button>
                                 )}
                             </div>
@@ -292,7 +346,7 @@ export default function ClassesPage() {
                             <div className="glass rounded-lg p-4">
                                 <p className="text-gray-400 text-sm mb-1">Fecha y Hora</p>
                                 <p className="text-white font-semibold">
-                                    {format(parseISO(selectedClass.startTime), "EEEE d 'de' MMMM, HH:mm", { locale: es })}
+                                    {format(parseISO(selectedClass.startTime), "EEEE dd/MM/yyyy 'a las' HH:mm", { locale: es })}
                                 </p>
                             </div>
                         </div>
@@ -333,7 +387,8 @@ export default function ClassesPage() {
                         </div>
                     </div>
                 </div>
-            )}
+            )
+            }
         </>
     );
 }

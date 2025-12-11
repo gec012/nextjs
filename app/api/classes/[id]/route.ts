@@ -66,6 +66,14 @@ export async function DELETE(
             });
         }
 
+        // Eliminar TODAS las reservas de la clase (activas, canceladas, etc.)
+        // para evitar error de foreign key constraint
+        await prisma.reservation.deleteMany({
+            where: {
+                classId: classId
+            }
+        });
+
         // Eliminar la clase
         await prisma.class.delete({
             where: { id: classId }
@@ -78,6 +86,91 @@ export async function DELETE(
 
     } catch (error) {
         console.error('Delete class error:', error);
+        return NextResponse.json(
+            {
+                message: 'Error interno del servidor',
+                error: error instanceof Error ? error.message : 'Unknown error'
+            },
+            { status: 500 }
+        );
+    }
+}
+
+export async function PATCH(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    const { id } = await params;
+    try {
+        const authHeader = request.headers.get('authorization');
+        const authUser = await authenticateRequest(authHeader, request);
+
+        if (!authUser) {
+            return NextResponse.json(
+                { message: 'No autenticado' },
+                { status: 401 }
+            );
+        }
+
+        // Solo admins pueden editar clases
+        if (authUser.rol !== 'ADMIN') {
+            return NextResponse.json(
+                { message: 'No autorizado' },
+                { status: 403 }
+            );
+        }
+
+        const classId = parseInt(id);
+
+        if (isNaN(classId)) {
+            return NextResponse.json(
+                { message: 'ID de clase inválido' },
+                { status: 400 }
+            );
+        }
+
+        const body = await request.json();
+        const { name, disciplineId, instructorName, capacity } = body;
+
+        // Verificar que la clase existe
+        const existingClass = await prisma.class.findUnique({
+            where: { id: classId }
+        });
+
+        if (!existingClass) {
+            return NextResponse.json(
+                { message: 'Clase no encontrada' },
+                { status: 404 }
+            );
+        }
+
+        // Actualizar la clase
+        const updatedClass = await prisma.class.update({
+            where: { id: classId },
+            data: {
+                ...(name && { name }),
+                ...(disciplineId && { disciplineId }),
+                ...(instructorName !== undefined && { instructorName }),
+                ...(capacity && { capacity }),
+            },
+            include: {
+                discipline: true
+            }
+        });
+
+        return NextResponse.json({
+            message: 'Clase actualizada exitosamente',
+            class: {
+                id: updatedClass.id,
+                name: updatedClass.name,
+                disciplineName: updatedClass.discipline.name,
+                instructorName: updatedClass.instructorName,
+                capacity: updatedClass.capacity,
+            }
+        });
+
+    } catch (error) {
+        console.error('Update class error:', error);
         return NextResponse.json(
             { message: 'Error interno del servidor' },
             { status: 500 }

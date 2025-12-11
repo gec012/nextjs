@@ -16,12 +16,17 @@ export async function GET(request: NextRequest) {
 
         const now = new Date();
 
-        // Obtener clases futuras y actuales (no pasadas)
+        // Obtener el inicio de la semana actual (lunes a las 00:00)
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        // Obtener clases desde el inicio de la semana actual
         const classes = await prisma.class.findMany({
             where: {
                 isActive: true,
                 startTime: {
-                    gte: now,
+                    gte: startOfWeek,
                 },
             },
             include: {
@@ -45,7 +50,7 @@ export async function GET(request: NextRequest) {
             orderBy: {
                 startTime: 'asc',
             },
-            take: 50, // Limitar a las próximas 50 clases
+            take: 500, // Permitir hasta 500 clases
         });
 
         // Formatear respuesta

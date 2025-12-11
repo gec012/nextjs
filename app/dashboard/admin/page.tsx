@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/auth.store';
-import AdminLayout from '@/components/AdminLayout';
+
 import {
     Users,
     Calendar,
@@ -85,7 +85,7 @@ export default function AdminDashboardPage() {
     ];
 
     return (
-        <AdminLayout activeTab="dashboard">
+        <>
             {/* Header */}
             <div className="mb-8 animate-slide-in-up">
                 <h1 className="text-3xl font-bold text-white mb-2">
@@ -172,6 +172,6 @@ export default function AdminDashboardPage() {
                     ))}
                 </div>
             </div>
-        </AdminLayout>
+        </>
     );
 }

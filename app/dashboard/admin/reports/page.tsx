@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import AdminLayout from '@/components/AdminLayout';
+
 import {
     BarChart3,
     TrendingUp,
@@ -277,7 +277,7 @@ export default function ReportsPage() {
     };
 
     return (
-        <AdminLayout activeTab="reportes">
+        <>
             {/* Header */}
             <div className="flex items-center justify-between mb-8 animate-slide-in-up">
                 <div>
@@ -548,6 +548,6 @@ export default function ReportsPage() {
                     <p className="text-gray-400">No hay datos disponibles</p>
                 </div>
             )}
-        </AdminLayout>
+        </>
     );
 }

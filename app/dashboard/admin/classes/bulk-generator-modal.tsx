@@ -31,6 +31,43 @@ const DAYS = [
 
 export default function BulkGeneratorModal({ disciplines, onClose, onGenerate }: BulkGeneratorModalProps) {
     const [loading, setLoading] = useState(false);
+
+    // Calcular fechas por defecto: lunes de esta semana hasta domingo
+    const getDefaultDates = () => {
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+
+        return {
+            start: monday.toISOString().split('T')[0],
+            end: sunday.toISOString().split('T')[0]
+        };
+    };
+
+    const defaultDates = getDefaultDates();
+    const [startDate, setStartDate] = useState(defaultDates.start);
+    const [endDate, setEndDate] = useState(defaultDates.end);
+
+    // Calcular qué días de la semana están en el rango de fechas
+    const getDaysInRange = (start: string, end: string): number[] => {
+        const days = new Set<number>();
+        const startD = new Date(start);
+        const endD = new Date(end);
+        endD.setHours(23, 59, 59);
+
+        let current = new Date(startD);
+        while (current <= endD) {
+            days.add(current.getDay());
+            current.setDate(current.getDate() + 1);
+        }
+        return Array.from(days);
+    };
+
+    const daysInRange = getDaysInRange(startDate, endDate);
+
     const [formData, setFormData] = useState({
         name: '',
         disciplineId: '',
@@ -43,14 +80,35 @@ export default function BulkGeneratorModal({ disciplines, onClose, onGenerate }:
         DAYS.map(day => ({
             dayId: day.id,
             dayName: day.name,
-            enabled: [1, 2, 3, 4, 5].includes(day.id), // Lunes a Viernes por defecto
+            enabled: [1, 2, 3, 4, 5, 6].includes(day.id), // Lunes a Sábado por defecto
             startTime: '08:00',
             endTime: '22:00',
             interval: 60, // 1 hora
         }))
     );
 
+    // Auto-actualizar días habilitados cuando cambia el rango
+    const updateDaysFromRange = (start: string, end: string) => {
+        const days = getDaysInRange(start, end);
+        setSchedules(prev => prev.map(s => ({
+            ...s,
+            enabled: days.includes(s.dayId)
+        })));
+    };
+
+    const handleStartDateChange = (value: string) => {
+        setStartDate(value);
+        updateDaysFromRange(value, endDate);
+    };
+
+    const handleEndDateChange = (value: string) => {
+        setEndDate(value);
+        updateDaysFromRange(startDate, value);
+    };
+
     const toggleDay = (dayId: number) => {
+        // Solo permitir toggle si el día está en el rango
+        if (!daysInRange.includes(dayId)) return;
         setSchedules(schedules.map(s =>
             s.dayId === dayId ? { ...s, enabled: !s.enabled } : s
         ));
@@ -133,7 +191,7 @@ export default function BulkGeneratorModal({ disciplines, onClose, onGenerate }:
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ classes }),
+                body: JSON.stringify({ classes, startDate, endDate }),
             });
 
             const data = await response.json();
@@ -176,6 +234,34 @@ export default function BulkGeneratorModal({ disciplines, onClose, onGenerate }:
                     {/* Configuración general */}
                     <div className="space-y-4">
                         <h3 className="text-lg font-semibold text-white mb-4">📝 Configuración General</h3>
+
+                        {/* Selector de fechas */}
+                        <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-4">
+                            <label className="block text-sm font-medium text-orange-400 mb-3">📅 Rango de fechas</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs text-gray-400 mb-1">Desde</label>
+                                    <input
+                                        type="date"
+                                        value={startDate}
+                                        onChange={(e) => handleStartDateChange(e.target.value)}
+                                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-gray-400 mb-1">Hasta</label>
+                                    <input
+                                        type="date"
+                                        value={endDate}
+                                        onChange={(e) => handleEndDateChange(e.target.value)}
+                                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                    />
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">
+                                Se crearán clases para cada día habilitado dentro de este rango
+                            </p>
+                        </div>
 
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">Nombre de la clase</label>
@@ -253,54 +339,64 @@ export default function BulkGeneratorModal({ disciplines, onClose, onGenerate }:
                         </div>
 
                         <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                            {schedules.map((schedule) => (
-                                <div
-                                    key={schedule.dayId}
-                                    className={`p-3 rounded-lg border-2 transition-all ${schedule.enabled
-                                            ? 'border-orange-500/30 bg-orange-500/5'
-                                            : 'border-white/10 bg-white/5 opacity-50'
-                                        }`}
-                                >
-                                    <div className="flex items-center justify-between mb-2">
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={schedule.enabled}
-                                                onChange={() => toggleDay(schedule.dayId)}
-                                                className="w-4 h-4 rounded accent-orange-500"
-                                            />
-                                            <span className="text-white font-medium">{schedule.dayName}</span>
-                                        </label>
-                                    </div>
+                            {schedules.map((schedule) => {
+                                const isInRange = daysInRange.includes(schedule.dayId);
 
-                                    {schedule.enabled && (
-                                        <div className="grid grid-cols-3 gap-2 mt-2">
-                                            <input
-                                                type="time"
-                                                value={schedule.startTime}
-                                                onChange={(e) => updateSchedule(schedule.dayId, 'startTime', e.target.value)}
-                                                className="px-2 py-1 text-sm bg-white/5 border border-white/10 rounded text-white focus:outline-none focus:ring-1 focus:ring-orange-500"
-                                            />
-                                            <input
-                                                type="time"
-                                                value={schedule.endTime}
-                                                onChange={(e) => updateSchedule(schedule.dayId, 'endTime', e.target.value)}
-                                                className="px-2 py-1 text-sm bg-white/5 border border-white/10 rounded text-white focus:outline-none focus:ring-1 focus:ring-orange-500"
-                                            />
-                                            <select
-                                                value={schedule.interval}
-                                                onChange={(e) => updateSchedule(schedule.dayId, 'interval', parseInt(e.target.value))}
-                                                className="px-2 py-1 text-sm bg-white/5 border border-white/10 rounded text-white focus:outline-none focus:ring-1 focus:ring-orange-500"
-                                            >
-                                                <option value={30} className="bg-gray-800">30min</option>
-                                                <option value={60} className="bg-gray-800">1h</option>
-                                                <option value={90} className="bg-gray-800">1.5h</option>
-                                                <option value={120} className="bg-gray-800">2h</option>
-                                            </select>
+                                return (
+                                    <div
+                                        key={schedule.dayId}
+                                        className={`p-3 rounded-lg border-2 transition-all ${!isInRange
+                                            ? 'border-gray-700 bg-gray-800/50 opacity-40'
+                                            : schedule.enabled
+                                                ? 'border-orange-500/30 bg-orange-500/5'
+                                                : 'border-white/10 bg-white/5 opacity-50'
+                                            }`}
+                                    >
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className={`flex items-center gap-2 ${isInRange ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={schedule.enabled && isInRange}
+                                                    onChange={() => toggleDay(schedule.dayId)}
+                                                    disabled={!isInRange}
+                                                    className="w-4 h-4 rounded accent-orange-500 disabled:opacity-30"
+                                                />
+                                                <span className={`font-medium ${isInRange ? 'text-white' : 'text-gray-500'}`}>
+                                                    {schedule.dayName}
+                                                    {!isInRange && <span className="text-xs ml-2 text-gray-600">(fuera del rango)</span>}
+                                                </span>
+                                            </label>
                                         </div>
-                                    )}
-                                </div>
-                            ))}
+
+                                        {schedule.enabled && (
+                                            <div className="grid grid-cols-3 gap-2 mt-2">
+                                                <input
+                                                    type="time"
+                                                    value={schedule.startTime}
+                                                    onChange={(e) => updateSchedule(schedule.dayId, 'startTime', e.target.value)}
+                                                    className="px-2 py-1 text-sm bg-white/5 border border-white/10 rounded text-white focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                                />
+                                                <input
+                                                    type="time"
+                                                    value={schedule.endTime}
+                                                    onChange={(e) => updateSchedule(schedule.dayId, 'endTime', e.target.value)}
+                                                    className="px-2 py-1 text-sm bg-white/5 border border-white/10 rounded text-white focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                                />
+                                                <select
+                                                    value={schedule.interval}
+                                                    onChange={(e) => updateSchedule(schedule.dayId, 'interval', parseInt(e.target.value))}
+                                                    className="px-2 py-1 text-sm bg-white/5 border border-white/10 rounded text-white focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                                >
+                                                    <option value={30} className="bg-gray-800">30min</option>
+                                                    <option value={60} className="bg-gray-800">1h</option>
+                                                    <option value={90} className="bg-gray-800">1.5h</option>
+                                                    <option value={120} className="bg-gray-800">2h</option>
+                                                </select>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
