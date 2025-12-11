@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useMembershipStore } from '@/lib/stores/membership.store';
-import Navbar from '@/components/Navbar';
 import {
     Calendar,
     Clock,
@@ -151,127 +150,123 @@ export default function ClassesPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900">
-            <Navbar activeTab="clases" />
+        <>
+            <div className="mb-8 animate-slide-in-up">
+                <h1 className="text-3xl font-bold text-white mb-2">
+                    Clases Disponibles 📅
+                </h1>
+                <p className="text-gray-400">
+                    Reserva tu lugar en las próximas clases
+                </p>
+            </div>
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="mb-8 animate-slide-in-up">
-                    <h1 className="text-3xl font-bold text-white mb-2">
-                        Clases Disponibles 📅
-                    </h1>
-                    <p className="text-gray-400">
-                        Reserva tu lugar en las próximas clases
-                    </p>
-                </div>
+            <div className="mb-6 flex items-center gap-3 overflow-x-auto pb-2">
+                <Filter className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                {disciplines.map((discipline) => (
+                    <button
+                        key={discipline}
+                        onClick={() => setSelectedDiscipline(discipline)}
+                        className={`px-4 py-2 rounded-lg font-medium transition-all flex-shrink-0 ${selectedDiscipline === discipline
+                            ? 'gradient-primary text-white'
+                            : 'glass text-gray-400 hover:text-white'
+                            }`}
+                    >
+                        {discipline === 'all' ? 'Todas' : discipline}
+                    </button>
+                ))}
+            </div>
 
-                <div className="mb-6 flex items-center gap-3 overflow-x-auto pb-2">
-                    <Filter className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                    {disciplines.map((discipline) => (
-                        <button
-                            key={discipline}
-                            onClick={() => setSelectedDiscipline(discipline)}
-                            className={`px-4 py-2 rounded-lg font-medium transition-all flex-shrink-0 ${selectedDiscipline === discipline
-                                ? 'gradient-primary text-white'
-                                : 'glass text-gray-400 hover:text-white'
-                                }`}
-                        >
-                            {discipline === 'all' ? 'Todas' : discipline}
-                        </button>
+            {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3].map((i) => (
+                        <div key={i} className="glass rounded-xl p-6 animate-pulse">
+                            <div className="h-6 bg-white/10 rounded mb-4"></div>
+                            <div className="h-4 bg-white/10 rounded mb-2"></div>
+                            <div className="h-4 bg-white/10 rounded w-2/3"></div>
+                        </div>
                     ))}
                 </div>
+            ) : filteredClasses.length === 0 ? (
+                <div className="glass rounded-xl p-12 text-center">
+                    <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-400 text-lg">No hay clases disponibles</p>
+                    <p className="text-gray-500 text-sm mt-2">
+                        {selectedDiscipline !== 'all'
+                            ? 'Intenta con otra disciplina'
+                            : 'Vuelve más tarde para ver nuevas clases'}
+                    </p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredClasses.map((classItem, index) => {
+                        const hasAccess = canReserve(classItem.disciplineName);
+                        const isFull = classItem.availableSpots === 0;
 
-                {isLoading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="glass rounded-xl p-6 animate-pulse">
-                                <div className="h-6 bg-white/10 rounded mb-4"></div>
-                                <div className="h-4 bg-white/10 rounded mb-2"></div>
-                                <div className="h-4 bg-white/10 rounded w-2/3"></div>
-                            </div>
-                        ))}
-                    </div>
-                ) : filteredClasses.length === 0 ? (
-                    <div className="glass rounded-xl p-12 text-center">
-                        <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <p className="text-gray-400 text-lg">No hay clases disponibles</p>
-                        <p className="text-gray-500 text-sm mt-2">
-                            {selectedDiscipline !== 'all'
-                                ? 'Intenta con otra disciplina'
-                                : 'Vuelve más tarde para ver nuevas clases'}
-                        </p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredClasses.map((classItem, index) => {
-                            const hasAccess = canReserve(classItem.disciplineName);
-                            const isFull = classItem.availableSpots === 0;
-
-                            return (
-                                <div
-                                    key={classItem.id}
-                                    className="glass rounded-xl p-6 card-hover animate-slide-in-up"
-                                    style={{ animationDelay: `${index * 50}ms` }}
-                                >
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-12 h-12 rounded-lg gradient-primary flex items-center justify-center">
-                                                <Dumbbell className="w-6 h-6 text-white" />
-                                            </div>
-                                            <div>
-                                                <h3 className="text-lg font-bold text-white">
-                                                    {classItem.name}
-                                                </h3>
-                                                <p className="text-sm text-blue-400">
-                                                    {classItem.disciplineName}
-                                                </p>
-                                            </div>
+                        return (
+                            <div
+                                key={classItem.id}
+                                className="glass rounded-xl p-6 card-hover animate-slide-in-up"
+                                style={{ animationDelay: `${index * 50}ms` }}
+                            >
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 rounded-lg gradient-primary flex items-center justify-center">
+                                            <Dumbbell className="w-6 h-6 text-white" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-white">
+                                                {classItem.name}
+                                            </h3>
+                                            <p className="text-sm text-blue-400">
+                                                {classItem.disciplineName}
+                                            </p>
                                         </div>
                                     </div>
-
-                                    <div className="space-y-3 mb-4">
-                                        <div className="flex items-center gap-2 text-gray-400">
-                                            <Clock className="w-4 h-4" />
-                                            <span className="text-sm">
-                                                {format(parseISO(classItem.startTime), "EEEE d 'de' MMMM, HH:mm", { locale: es })}
-                                            </span>
-                                        </div>
-
-                                        <div className="flex items-center gap-2">
-                                            <Users className="w-4 h-4 text-gray-400" />
-                                            <span className={`text-sm font-semibold ${getSpotColor(classItem.availableSpots, classItem.capacity)}`}>
-                                                {classItem.availableSpots} / {classItem.capacity} lugares
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {classItem.isReserved ? (
-                                        <button
-                                            onClick={() => classItem.reservationId && handleCancel(classItem.reservationId)}
-                                            disabled={isCancelling}
-                                            className="w-full py-3 rounded-lg font-semibold transition-all bg-green-500/20 text-green-400 hover:bg-red-500/20 hover:text-red-400"
-                                        >
-                                            {isCancelling ? 'Cancelando...' : '✓ Reservado - Click para cancelar'}
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() => setSelectedClass(classItem)}
-                                            disabled={!hasAccess || isFull}
-                                            className={`w-full py-3 rounded-lg font-semibold transition-all ${!hasAccess
-                                                ? 'bg-gray-500/20 text-gray-500 cursor-not-allowed'
-                                                : isFull
-                                                    ? 'bg-red-500/20 text-red-400 cursor-not-allowed'
-                                                    : 'gradient-primary text-white hover:opacity-90'
-                                                }`}
-                                        >
-                                            {!hasAccess ? 'Sin membresía' : isFull ? 'Completo' : 'Reservar'}
-                                        </button>
-                                    )}
                                 </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </main>
+
+                                <div className="space-y-3 mb-4">
+                                    <div className="flex items-center gap-2 text-gray-400">
+                                        <Clock className="w-4 h-4" />
+                                        <span className="text-sm">
+                                            {format(parseISO(classItem.startTime), "EEEE d 'de' MMMM, HH:mm", { locale: es })}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <Users className="w-4 h-4 text-gray-400" />
+                                        <span className={`text-sm font-semibold ${getSpotColor(classItem.availableSpots, classItem.capacity)}`}>
+                                            {classItem.availableSpots} / {classItem.capacity} lugares
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {classItem.isReserved ? (
+                                    <button
+                                        onClick={() => classItem.reservationId && handleCancel(classItem.reservationId)}
+                                        disabled={isCancelling}
+                                        className="w-full py-3 rounded-lg font-semibold transition-all bg-green-500/20 text-green-400 hover:bg-red-500/20 hover:text-red-400"
+                                    >
+                                        {isCancelling ? 'Cancelando...' : '✓ Reservado - Click para cancelar'}
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => setSelectedClass(classItem)}
+                                        disabled={!hasAccess || isFull}
+                                        className={`w-full py-3 rounded-lg font-semibold transition-all ${!hasAccess
+                                            ? 'bg-gray-500/20 text-gray-500 cursor-not-allowed'
+                                            : isFull
+                                                ? 'bg-red-500/20 text-red-400 cursor-not-allowed'
+                                                : 'gradient-primary text-white hover:opacity-90'
+                                            }`}
+                                    >
+                                        {!hasAccess ? 'Sin membresía' : isFull ? 'Completo' : 'Reservar'}
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
 
             {selectedClass && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
@@ -339,6 +334,6 @@ export default function ClassesPage() {
                     </div>
                 </div>
             )}
-        </div>
+        </>
     );
 }
