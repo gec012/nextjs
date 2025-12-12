@@ -5,7 +5,7 @@
  */
 
 // Define UserRole type to match Prisma schema
-type UserRole = 'ADMIN' | 'STAFF' | 'CLIENT';
+type UserRole = 'ADMIN' | 'STAFF' | 'CLIENT' | 'MONITOR';
 
 interface RouteConfig {
   allowedRoles: UserRole[];
@@ -32,12 +32,16 @@ const ROUTE_PERMISSIONS: RoleRouteMap = {
     allowedRoles: ['ADMIN', 'STAFF', 'CLIENT'],
     redirectPath: '/dashboard/client',
   },
+  '/access-point': {
+    allowedRoles: ['ADMIN', 'STAFF', 'MONITOR'],
+    redirectPath: '/dashboard/client',
+  }
 };
 
 /**
  * Get the correct dashboard path for a given user role
  * 
- * @param role - The user's role (ADMIN, STAFF, or CLIENT)
+ * @param role - The user's role (ADMIN, STAFF, CLIENT, MONITOR)
  * @returns The dashboard path for that role
  */
 export function getDashboardPathForRole(role: UserRole): string {
@@ -48,6 +52,8 @@ export function getDashboardPathForRole(role: UserRole): string {
       return '/dashboard/staff';
     case 'CLIENT':
       return '/dashboard/client';
+    case 'MONITOR':
+      return '/access-point';
     default:
       // Fallback for unrecognized roles
       console.warn(`Unrecognized role: ${role}, defaulting to client dashboard`);
@@ -63,16 +69,20 @@ export function getDashboardPathForRole(role: UserRole): string {
  * @returns true if the user can access the route, false otherwise
  */
 export function canAccessRoute(userRole: UserRole, pathname: string): boolean {
-  // Extract base dashboard path (e.g., /dashboard/admin from /dashboard/admin/users)
-  const basePath = pathname.split('/').slice(0, 3).join('/');
-  
+  // Extract base dashboard path
+  // Handle root paths like /access-point properly
+  let basePath = pathname;
+  if (pathname.startsWith('/dashboard')) {
+    basePath = pathname.split('/').slice(0, 3).join('/');
+  }
+
   const routeConfig = ROUTE_PERMISSIONS[basePath];
-  
+
   // If route is in our permissions map, check against allowed roles
   if (routeConfig) {
     return routeConfig.allowedRoles.includes(userRole);
   }
-  
+
   // For sub-routes not in the map, check the parent path
   if (pathname.startsWith('/dashboard/admin')) {
     return userRole === 'ADMIN';
@@ -81,9 +91,13 @@ export function canAccessRoute(userRole: UserRole, pathname: string): boolean {
     return userRole === 'ADMIN' || userRole === 'STAFF';
   }
   if (pathname.startsWith('/dashboard/client')) {
-    return true; // All authenticated users can access client routes
+    if (userRole === 'MONITOR') return false; // Monitor cannot see client dashboard
+    return true; // All validated users can access client routes (except monitor)
   }
-  
+  if (pathname.startsWith('/access-point')) {
+    return ['ADMIN', 'STAFF', 'MONITOR'].includes(userRole);
+  }
+
   // Default: allow access for unknown routes
   return true;
 }
@@ -100,7 +114,7 @@ export function getRedirectPath(userRole: UserRole, pathname: string): string | 
   if (canAccessRoute(userRole, pathname)) {
     return null;
   }
-  
+
   // User cannot access, redirect to their appropriate dashboard
   return getDashboardPathForRole(userRole);
 }

@@ -5,8 +5,9 @@ import prisma from '@/lib/prisma';
 // GET - Obtener una disciplina específica
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    props: { params: Promise<{ id: string }> }
 ) {
+    const params = await props.params;
     try {
         const authHeader = request.headers.get('authorization');
         const authUser = await authenticateRequest(authHeader, request);
@@ -52,8 +53,9 @@ export async function GET(
 // PUT - Actualizar disciplina
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    props: { params: Promise<{ id: string }> }
 ) {
+    const params = await props.params;
     try {
         const authHeader = request.headers.get('authorization');
         const authUser = await authenticateRequest(authHeader, request);
@@ -144,8 +146,9 @@ export async function PUT(
 // DELETE - Eliminar disciplina
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    props: { params: Promise<{ id: string }> }
 ) {
+    const params = await props.params;
     try {
         const authHeader = request.headers.get('authorization');
         const authUser = await authenticateRequest(authHeader, request);

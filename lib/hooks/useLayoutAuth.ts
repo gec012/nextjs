@@ -23,38 +23,64 @@ export function useLayoutAuth() {
     const [isChecking, setIsChecking] = useState(true);
 
     useEffect(() => {
-        try {
-            // Redirect if not authenticated
-            if (!isAuthenticated) {
-                router.push('/');
-                return;
-            }
+        const checkAuth = async () => {
+            try {
+                // 1. If we think we are not authenticated, double check with the server
+                // This handles cases like new tabs where localStorage might not be hydrated yet
+                // or simply cleared but cookie remains.
+                if (!isAuthenticated) {
+                    try {
+                        const response = await fetch('/api/me');
+                        if (response.ok) {
+                            const userData = await response.json();
+                            // Adapt API response to StoreUser format
+                            useAuthStore.getState().login({
+                                id: userData.id,
+                                name: userData.nombre,
+                                email: userData.email,
+                                rol: userData.rol,
+                            });
+                            // Verify path access will happen in next render cycle or immediately below
+                            // But usually, updating store triggers re-render of this hook.
+                            return;
+                        } else {
+                            // Valid session not found
+                            throw new Error('No session');
+                        }
+                    } catch (e) {
+                        router.push('/');
+                        return;
+                    }
+                }
 
-            // Check if user data is corrupted
-            if (!user || !user.rol) {
-                console.error('Corrupted auth state detected');
+                // 2. Check for corrupted state
+                if (!user || !user.rol) {
+                    // Try one last recovery attempt if we just logged in? 
+                    // No, if isAuthenticated is true but user is null, it's weird.
+                    console.error('Corrupted auth state detected');
+                    logout();
+                    router.push('/');
+                    return;
+                }
+
+                // 3. Check Route Permissions
+                const redirectPath = getRedirectPath(user.rol, pathname);
+
+                if (redirectPath) {
+                    console.log(`Redirecting ${user.rol} from ${pathname} to ${redirectPath}`);
+                    router.push(redirectPath);
+                } else {
+                    setIsChecking(false);
+                }
+
+            } catch (error) {
+                console.error('Route protection error:', error);
                 logout();
-                toast.error('Sesión inválida, por favor inicia sesión nuevamente');
                 router.push('/');
-                return;
             }
+        };
 
-            // Check if user can access current route
-            const redirectPath = getRedirectPath(user.rol, pathname);
-
-            if (redirectPath) {
-                // User cannot access this route, redirect to their dashboard
-                console.log(`Redirecting ${user.rol} from ${pathname} to ${redirectPath}`);
-                router.push(redirectPath);
-            } else {
-                // User can access this route, stop checking
-                setIsChecking(false);
-            }
-        } catch (error) {
-            console.error('Route protection error:', error);
-            logout();
-            router.push('/');
-        }
+        checkAuth();
     }, [isAuthenticated, user, pathname, router, logout]);
 
     return {

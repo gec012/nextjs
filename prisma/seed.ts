@@ -142,6 +142,7 @@ async function main() {
             password: hashedPassword,
             rol: 'ADMIN',
             phone: '+54 9 11 1234-5678',
+            dni: '11111111',
         },
     });
 
@@ -152,6 +153,18 @@ async function main() {
             password: hashedPassword,
             rol: 'STAFF',
             phone: '+54 9 11 2345-6789',
+            dni: '22222222',
+        },
+    });
+
+    const monitor = await prisma.user.create({
+        data: {
+            name: 'Puesto de Acceso',
+            email: 'monitor@gym.com',
+            password: hashedPassword,
+            rol: 'MONITOR',
+            phone: '',
+            dni: '00000000',
         },
     });
 
@@ -162,6 +175,7 @@ async function main() {
             password: hashedPassword,
             rol: 'CLIENT',
             phone: '+54 9 11 3456-7890',
+            dni: '33333333',
         },
     });
 
@@ -172,6 +186,7 @@ async function main() {
             password: hashedPassword,
             rol: 'CLIENT',
             phone: '+54 9 11 4567-8901',
+            dni: '44444444',
         },
     });
 
@@ -182,6 +197,7 @@ async function main() {
             password: hashedPassword,
             rol: 'CLIENT',
             phone: '+54 9 11 5678-9012',
+            dni: '55555555',
         },
     });
 

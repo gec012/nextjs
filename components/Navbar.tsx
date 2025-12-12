@@ -82,7 +82,7 @@ export default function Navbar({ activeTab = 'home' }: NavbarProps) {
                     { icon: User, label: 'Inicio', href: '/dashboard/client' },
                     { icon: Calendar, label: 'Clases', href: '/dashboard/client/classes' },
                     { icon: Receipt, label: 'Pagos', href: '/dashboard/client/payments' },
-                    { icon: QrCode, label: 'Mi QR', href: '/dashboard/client/qr' },
+                    { icon: QrCode, label: 'Escanear', href: '/dashboard/client/qr' },
                     { icon: History, label: 'Historial', href: '/dashboard/client/history' },
                 ];
         }
@@ -146,7 +146,7 @@ export default function Navbar({ activeTab = 'home' }: NavbarProps) {
                             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"
                         >
                             <LogOut className="w-5 h-5" />
-                            <span className="hidden sm:inline font-medium">Salir</span>
+                            <span className="hidden sm:inline font-medium">Cerrar sesión</span>
                         </button>
                     </div>
                 </div>

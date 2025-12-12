@@ -79,6 +79,10 @@ export const checkInSchema = z.object({
         .int('ID de usuario inválido')
         .positive('ID debe ser positivo')
         .optional(),
+    dni: z
+        .string()
+        .min(1, 'El DNI es requerido')
+        .optional(),
     qr_data: z
         .string()
         .min(1, 'Datos de QR requeridos')
@@ -86,9 +90,11 @@ export const checkInSchema = z.object({
     discipline_id: z
         .number()
         .int('ID de disciplina inválido')
-        .positive('ID debe ser positivo'),
-}).refine((data) => data.user_id || data.qr_data, {
-    message: 'Debes proporcionar user_id o qr_data',
+        .positive('ID debe ser positivo')
+        .optional(),
+
+}).refine((data) => data.user_id || data.qr_data || data.dni, {
+    message: 'Debes proporcionar user_id, dni o qr_data',
 });
 
 export const qrDataSchema = z.object({

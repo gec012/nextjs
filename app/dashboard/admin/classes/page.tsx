@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import BulkGeneratorModal from './bulk-generator-modal';
 import CalendarView from './calendar-view';
+import AttendeesModal from './attendees-modal';
 import {
     Calendar,
     Clock,
@@ -20,6 +21,7 @@ import {
     CalendarDays,
     CheckSquare,
     Square,
+    ClipboardList,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -74,6 +76,7 @@ export default function AdminClassesPage() {
     const [showBulkGenerator, setShowBulkGenerator] = useState(false);
     const [selectedClasses, setSelectedClasses] = useState<number[]>([]);
     const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('calendar'); // Default to calendar view
+    const [viewingAttendeesClass, setViewingAttendeesClass] = useState<Class | null>(null);
 
     // Form state para clases programadas
     const [classFormData, setClassFormData] = useState({
@@ -628,6 +631,7 @@ export default function AdminClassesPage() {
                             onEdit={handleOpenClassModal}
                             onDelete={handleDelete}
                             onToggleSelect={toggleSelectClass}
+                            onViewAttendees={(classItem) => setViewingAttendeesClass(classItem)}
                         />
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -652,6 +656,13 @@ export default function AdminClassesPage() {
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
+                                            <button
+                                                onClick={() => setViewingAttendeesClass(classItem)}
+                                                className="p-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all"
+                                                title="Ver Asistentes"
+                                            >
+                                                <ClipboardList className="w-4 h-4" />
+                                            </button>
                                             <button
                                                 onClick={() => handleOpenClassModal(classItem)}
                                                 className="p-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-all"
@@ -1061,6 +1072,15 @@ export default function AdminClassesPage() {
                     />
                 )
             }
+
+            {/* Attendees Modal */}
+            {viewingAttendeesClass && (
+                <AttendeesModal
+                    classId={viewingAttendeesClass.id}
+                    className={viewingAttendeesClass.name}
+                    onClose={() => setViewingAttendeesClass(null)}
+                />
+            )}
         </>
     );
 }

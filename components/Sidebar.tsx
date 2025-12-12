@@ -72,11 +72,12 @@ export default function Sidebar({ activeTab }: SidebarProps) {
                     { icon: CreditCard, label: 'Planes', href: '/dashboard/admin/plans' },
                     { icon: Receipt, label: 'Membresías', href: '/dashboard/admin/memberships' },
                     { icon: TrendingUp, label: 'Reportes', href: '/dashboard/admin/reports' },
+                    { icon: ScanLine, label: 'Check-in', href: '/access-point' },
                     { icon: Settings, label: 'Configuración', href: '/dashboard/admin/settings' },
                 ];
             case 'STAFF':
                 return [
-                    { icon: ScanLine, label: 'Escáner', href: '/dashboard/staff' },
+                    { icon: ScanLine, label: 'Escáner', href: '/access-point' },
                     { icon: Calendar, label: 'Clases', href: '/dashboard/staff/classes' },
                     { icon: CreditCard, label: 'Pagos', href: '/dashboard/staff/payments' },
                     { icon: Users, label: 'Usuarios', href: '/dashboard/staff/users' },
@@ -86,7 +87,7 @@ export default function Sidebar({ activeTab }: SidebarProps) {
                     { icon: User, label: 'Inicio', href: '/dashboard/client' },
                     { icon: Calendar, label: 'Clases', href: '/dashboard/client/classes' },
                     { icon: CreditCard, label: 'Pagos', href: '/dashboard/client/payments' },
-                    { icon: QrCode, label: 'Mi QR', href: '/dashboard/client/qr' },
+                    { icon: QrCode, label: 'Escanear', href: '/dashboard/client/qr' },
                     { icon: History, label: 'Historial', href: '/dashboard/client/history' },
                 ];
         }
@@ -152,7 +153,11 @@ export default function Sidebar({ activeTab }: SidebarProps) {
                                 <button
                                     key={item.label}
                                     onClick={() => {
-                                        router.push(item.href);
+                                        if (item.href === '/access-point') {
+                                            window.open(item.href, '_blank');
+                                        } else {
+                                            router.push(item.href);
+                                        }
                                         setIsOpen(false);
                                     }}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${isActive
@@ -175,7 +180,7 @@ export default function Sidebar({ activeTab }: SidebarProps) {
                         className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:bg-red-500/10 transition-all"
                     >
                         <LogOut className="w-5 h-5" />
-                        <span className="font-medium">Salir</span>
+                        <span className="font-medium">Cerrar sesión</span>
                     </button>
                 </div>
             </aside>

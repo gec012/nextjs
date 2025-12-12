@@ -1,202 +1,211 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useUser } from '@/lib/stores/auth.store';
-import { QrCode, RefreshCw, Clock, Shield, AlertCircle } from 'lucide-react';
-import QRCodeLib from 'qrcode';
+import { QrCode, Shield, Loader2, Camera, CheckCircle, XCircle } from 'lucide-react';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 import toast from 'react-hot-toast';
 
-export default function QRPage() {
+export default function ScanPage() {
     const user = useUser();
-
-    const [qrCode, setQrCode] = useState<string>('');
-    const [qrData, setQrData] = useState<any>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [timeRemaining, setTimeRemaining] = useState<number>(0);
+    const [scanResult, setScanResult] = useState<string | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
     useEffect(() => {
-        generateQR();
-    }, []);
-
-    useEffect(() => {
-        if (!qrData) return;
-
-        const interval = setInterval(() => {
-            const expiresAt = new Date(qrData.expiresAt).getTime();
-            const now = Date.now();
-            const remaining = Math.max(0, Math.floor((expiresAt - now) / 1000));
-
-            setTimeRemaining(remaining);
-
-            if (remaining === 0) {
-                toast.error('QR expirado. Genera uno nuevo.');
-            }
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [qrData]);
-
-    const generateQR = async () => {
-        setIsLoading(true);
-        try {
-            const response = await fetch('/api/qr/generate', {
-                method: 'POST',
-                credentials: 'include', // Cookie se envía automáticamente
-                headers: {
-                    'Content-Type': 'application/json',
+        // Inicializar scanner solo si no hay resultado
+        if (!scanResult && !scannerRef.current) {
+            const scanner = new Html5QrcodeScanner(
+                "reader",
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0
                 },
-            });
+                /* verbose= */ false
+            );
 
-            if (!response.ok) {
-                throw new Error('Error al generar QR');
+            scanner.render(onScanSuccess, onScanFailure);
+            scannerRef.current = scanner;
+        }
+
+        // Cleanup
+        return () => {
+            if (scannerRef.current) {
+                scannerRef.current.clear().catch(error => console.error("Failed to clear html5-qrcode scanner. ", error));
+                scannerRef.current = null;
             }
+        };
+    }, [scanResult]);
+
+    async function onScanSuccess(decodedText: string, decodedResult: any) {
+        if (isProcessing) return;
+
+        // Validar formato básico del QR del gimnasio
+        if (!decodedText.startsWith('GYM_ACCESS_POINT_')) {
+            toast.error('Código QR no válido para este gimnasio');
+            return;
+        }
+
+        setIsProcessing(true);
+        // Pausar o limpiar scanner
+        if (scannerRef.current) {
+            scannerRef.current.clear().catch(e => console.error(e));
+            scannerRef.current = null;
+        }
+
+        try {
+            const response = await fetch('/api/check-in/client-scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    qr_code: decodedText,
+                    user_id: user?.id
+                }),
+            });
 
             const data = await response.json();
-            setQrData(data);
 
-            // Generar imagen QR
-            const qrImage = await QRCodeLib.toDataURL(data.code, {
-                width: 400,
-                margin: 2,
-                color: {
-                    dark: '#1e40af',
-                    light: '#ffffff',
-                },
-            });
+            if (response.ok) {
+                setScanResult('success');
+                toast.success(data.message);
+            } else {
+                setScanResult(data.message || 'Error al procesar ingreso');
+                toast.error(data.message);
+            }
 
-            setQrCode(qrImage);
-            toast.success('QR generado exitosamente');
         } catch (error) {
-            console.error('Error generating QR:', error);
-            toast.error('Error al generar el código QR');
+            console.error('Scan error:', error);
+            setScanResult('Error de conexión');
+            toast.error('No se pudo conectar con el servidor');
         } finally {
-            setIsLoading(false);
+            setIsProcessing(false);
         }
-    };
+    }
 
-    const formatTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
+    function onScanFailure(error: any) {
+        // Ignorar errores de "no QR found" que ocurren en cada frame
+        // console.warn(`Code scan error = ${error}`);
+    }
 
-    const isExpired = timeRemaining === 0;
-    const isExpiringSoon = timeRemaining > 0 && timeRemaining <= 60;
+    const resetScanner = () => {
+        setScanResult(null);
+        setIsProcessing(false);
+        // El useEffect reinicializará el scanner
+    };
 
     return (
-        <>
+        <div className="max-w-2xl mx-auto">
             <div className="mb-8 animate-slide-in-up">
-                <h1 className="text-3xl font-bold text-white mb-2">
-                    Mi Código QR 📱
+                <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
+                    <Camera className="w-8 h-8 text-blue-500" />
+                    Escanear Ingreso
                 </h1>
                 <p className="text-gray-400">
-                    Muestra este código en recepción para hacer check-in
+                    Escanea el código QR ubicado en el ingreso para registrar tu asistencia.
                 </p>
             </div>
 
-            {/* QR Card */}
-            <div className="glass rounded-2xl p-8 animate-slide-in-up">
-                {/* User Info */}
-                <div className="text-center mb-8">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">
-                        {user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || '??'}
+            <div className="glass rounded-2xl p-6 md:p-8 animate-slide-in-up shadow-2xl overflow-hidden relative">
+
+                {/* Estado: Escaneando */}
+                {!scanResult && (
+                    <div className="flex flex-col items-center">
+                        <div id="reader" className="w-full max-w-md overflow-hidden rounded-xl border-2 border-white/10 bg-black"></div>
+                        <p className="text-sm text-gray-500 mt-4 text-center">
+                            Apunta tu cámara al código QR del gimnasio.
+                        </p>
                     </div>
-                    <h2 className="text-2xl font-bold text-white mb-1">{user?.name}</h2>
-                    <p className="text-gray-400">{user?.email}</p>
-                </div>
+                )}
 
-                {/* QR Code */}
-                {qrCode && !isExpired ? (
-                    <div className="relative">
-                        <div className="bg-white rounded-2xl p-8 mb-6">
-                            <img
-                                src={qrCode}
-                                alt="QR Code"
-                                className="w-full max-w-sm mx-auto"
-                            />
-                        </div>
-
-                        {/* Timer */}
-                        <div className={`text-center mb-6 ${isExpiringSoon ? 'animate-pulse' : ''}`}>
-                            <div className="flex items-center justify-center gap-2 mb-2">
-                                <Clock className={`w-5 h-5 ${isExpiringSoon ? 'text-red-400' : 'text-blue-400'}`} />
-                                <span className={`text-lg font-semibold ${isExpiringSoon ? 'text-red-400' : 'text-white'}`}>
-                                    Expira en: {formatTime(timeRemaining)}
-                                </span>
-                            </div>
-                            {isExpiringSoon && (
-                                <p className="text-sm text-yellow-400">
-                                    ⚠️ El código expirará pronto
-                                </p>
-                            )}
-                        </div>
-
-                        {/* QR Code Info */}
-                        <div className="glass rounded-lg p-4 mb-6">
-                            <div className="flex items-start gap-3">
-                                <Shield className="w-5 h-5 text-blue-400 mt-0.5" />
-                                <div>
-                                    <p className="text-white font-semibold mb-1">Código seguro y temporal</p>
-                                    <p className="text-gray-400 text-sm">
-                                        Este código QR es único y caduca automáticamente después de 30 minutos por seguridad.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Refresh Button */}
-                        <button
-                            onClick={generateQR}
-                            disabled={isLoading}
-                            className="w-full py-4 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all font-semibold flex items-center justify-center gap-2"
-                        >
-                            <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
-                            Generar nuevo código
-                        </button>
+                {/* Estado: Procesando */}
+                {isProcessing && (
+                    <div className="absolute inset-0 bg-gray-900/90 flex flex-col items-center justify-center z-20">
+                        <Loader2 className="w-16 h-16 text-blue-500 animate-spin mb-4" />
+                        <p className="text-xl text-white font-medium animate-pulse">Procesando acceso...</p>
                     </div>
-                ) : (
-                    <div className="text-center py-12">
-                        <div className="w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
-                            <AlertCircle className="w-10 h-10 text-red-400" />
+                )}
+
+                {/* Estado: Resultado Éxito */}
+                {scanResult === 'success' && (
+                    <div className="flex flex-col items-center text-center py-8">
+                        <div className="w-24 h-24 rounded-full bg-green-500/20 flex items-center justify-center mb-6 animate-scale-in">
+                            <CheckCircle className="w-12 h-12 text-green-500" />
                         </div>
-                        <h3 className="text-xl font-bold text-white mb-2">Código expirado</h3>
-                        <p className="text-gray-400 mb-6">
-                            Tu código QR ha expirado. Genera uno nuevo para continuar.
+                        <h2 className="text-2xl font-bold text-white mb-2">¡Bienvenido!</h2>
+                        <p className="text-gray-400 mb-8 max-w-xs">
+                            Tu ingreso ha sido registrado exitosamente. ¡Buen entrenamiento!
                         </p>
                         <button
-                            onClick={generateQR}
-                            disabled={isLoading}
-                            className="px-8 py-3 rounded-lg gradient-primary text-white font-semibold hover:opacity-90 transition-all inline-flex items-center gap-2"
+                            onClick={resetScanner}
+                            className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"
                         >
-                            <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
-                            {isLoading ? 'Generando...' : 'Generar código QR'}
+                            Escanear de nuevo
                         </button>
                     </div>
                 )}
+
+                {/* Estado: Resultado Error */}
+                {scanResult && scanResult !== 'success' && !isProcessing && (
+                    <div className="flex flex-col items-center text-center py-8">
+                        <div className="w-24 h-24 rounded-full bg-red-500/20 flex items-center justify-center mb-6 animate-shake">
+                            <XCircle className="w-12 h-12 text-red-500" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-white mb-2">Acceso Denegado</h2>
+                        <p className="text-red-400 mb-8 max-w-xs font-medium">
+                            {scanResult}
+                        </p>
+                        <button
+                            onClick={resetScanner}
+                            className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all"
+                        >
+                            Intentar de nuevo
+                        </button>
+                    </div>
+                )}
+
             </div>
 
-            {/* Instructions */}
-            <div className="mt-6 glass rounded-xl p-6">
-                <h3 className="text-lg font-bold text-white mb-4">📋 Instrucciones</h3>
-                <ul className="space-y-3 text-gray-400">
-                    <li className="flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-sm font-semibold flex-shrink-0">1</span>
-                        <span>Genera tu código QR haciendo clic en el botón.</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-sm font-semibold flex-shrink-0">2</span>
-                        <span>Muestra el código al personal de recepción para hacer check-in.</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-sm font-semibold flex-shrink-0">3</span>
-                        <span>El código expira en 30 minutos. Si caduca, genera uno nuevo.</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-sm font-semibold flex-shrink-0">4</span>
-                        <span>Asegúrate de tener una membresía activa antes de hacer check-in.</span>
-                    </li>
-                </ul>
+            {/* Manual Entry for Testing/Fallback */}
+            <div className="mt-8 glass rounded-xl p-6">
+                <h3 className="text-lg font-bold text-white mb-4">¿Problemas con la cámara?</h3>
+                <p className="text-gray-400 text-sm mb-4">
+                    Si no puedes acceder a la cámara (común en entornos de prueba sin HTTPS), puedes ingresar el código manualmente.
+                </p>
+                <div className="flex gap-2">
+                    <input
+                        type="text"
+                        placeholder="GYM_ACCESS_POINT_..."
+                        className="flex-1 bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white text-sm"
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                onScanSuccess(e.currentTarget.value, null);
+                            }
+                        }}
+                    />
+                    <button
+                        className="px-4 py-2 bg-blue-600 rounded-lg text-white text-sm font-bold"
+                        onClick={(e) => {
+                            const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                            onScanSuccess(input.value, null);
+                        }}
+                    >
+                        Enviar
+                    </button>
+                </div>
             </div>
-        </>
+
+            <div className="mt-6 glass rounded-xl p-6">
+                <div className="flex items-start gap-4">
+                    <Shield className="w-6 h-6 text-blue-400 mt-1 flex-shrink-0" />
+                    <div>
+                        <h3 className="text-lg font-bold text-white mb-1">¿Dónde está el código?</h3>
+                        <p className="text-gray-400 text-sm">
+                            Busca el código QR impreso en el mostrador de recepción o en la pantalla de la terminal de acceso.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }

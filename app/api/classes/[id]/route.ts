@@ -251,8 +251,11 @@ export async function GET(
                 isActive: classItem.isActive,
                 reservations: classItem.reservations.map(r => ({
                     id: r.id,
+                    oderId: r.user.id,
                     userName: r.user.name,
-                    userEmail: r.user.email
+                    userEmail: r.user.email,
+                    attended: r.attended,
+                    reservedAt: r.createdAt
                 }))
             }
         });

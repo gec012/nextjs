@@ -2,7 +2,7 @@
 
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Clock, Users, Pencil, Trash2 } from 'lucide-react';
+import { Clock, Users, Pencil, Trash2, ClipboardList } from 'lucide-react';
 
 interface Class {
     id: number;
@@ -24,6 +24,7 @@ interface CalendarViewProps {
     onEdit: (classItem: Class) => void;
     onDelete: (classId: number) => void;
     onToggleSelect: (classId: number) => void;
+    onViewAttendees: (classItem: Class) => void;
 }
 
 const DAYS_OF_WEEK = [
@@ -42,7 +43,7 @@ const TIME_SLOTS = [
     '18:00', '19:00', '20:00', '21:00', '22:00'
 ];
 
-export default function CalendarView({ classes, selectedClasses, onEdit, onDelete, onToggleSelect }: CalendarViewProps) {
+export default function CalendarView({ classes, selectedClasses, onEdit, onDelete, onToggleSelect, onViewAttendees }: CalendarViewProps) {
     // Calcular fechas de la semana actual
     const getWeekDates = () => {
         const today = new Date();
@@ -214,6 +215,16 @@ export default function CalendarView({ classes, selectedClasses, onEdit, onDelet
 
                                                             {/* Botones de acción - aparecen al hover */}
                                                             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        onViewAttendees(classItem);
+                                                                    }}
+                                                                    className="p-1.5 rounded-lg bg-green-500/90 text-white hover:bg-green-600 transition-all"
+                                                                    title="Ver Asistentes"
+                                                                >
+                                                                    <ClipboardList className="w-3 h-3" />
+                                                                </button>
                                                                 <button
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();

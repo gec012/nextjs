@@ -184,6 +184,10 @@ export default function LoginPage() {
                 <span>Staff:</span>
                 <span className="text-gray-400">recepcion@gym.com / 123456</span>
               </div>
+              <div className="flex justify-between">
+                <span>Monitor:</span>
+                <span className="text-gray-400">monitor@gym.com / 123456</span>
+              </div>
             </div>
           </div>
         </div>
